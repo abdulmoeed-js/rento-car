@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,7 @@ const AdminKyc = () => {
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["kyc-users"],
     queryFn: async () => {
-      // Cast to any to work around TypeScript restrictions for profiles table
+      // We need to cast the entire query to any due to missing type definitions
       const { data: profiles, error } = await (supabase
         .from("profiles") as any)
         .select("*, users:auth.users(email, created_at)")
@@ -97,7 +96,7 @@ const AdminKyc = () => {
         currentAction === "reject" ? "rejected" : 
         "pending_reupload";
 
-      // Cast to any to work around TypeScript restrictions for profiles table
+      // We need to cast to any because profiles table is not in type definitions
       const { error: updateError } = await (supabase
         .from("profiles") as any)
         .update({ license_status: newStatus })
@@ -106,7 +105,7 @@ const AdminKyc = () => {
       if (updateError) throw updateError;
 
       // Log the KYC review action
-      // Cast to any to work around TypeScript restrictions for kyc_review_logs table
+      // We need to cast to any because kyc_review_logs table is not in type definitions
       const { error: logError } = await (supabase
         .from("kyc_review_logs") as any)
         .insert({
