@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
-    // We need to cast the entire response to any since the RPC function is not in types
-    const { data, error } = await (supabase.rpc('has_role', { 
+    // We need to cast the entire thing to any since the RPC function is not in types
+    const { data, error } = await (supabase as any).rpc('has_role', { 
       _user_id: userId, 
       _role: 'admin' 
-    }) as any);
+    });
     
     if (error) {
       console.error('Error checking admin status:', error);
