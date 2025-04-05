@@ -3,7 +3,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format, formatDistanceToNow } from "date-fns";
-import { Check, X, UploadCloud, Clock } from "lucide-react";
+import { Check, X, UploadCloud, Clock, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type KycUser = {
@@ -97,11 +97,22 @@ export const KycUserDetails: React.FC<KycUserDetailsProps> = ({
             <h3 className="font-medium mb-2">License Image</h3>
             {user.licenseImageUrl ? (
               <div className="border rounded-lg overflow-hidden">
-                <img 
-                  src={user.licenseImageUrl} 
-                  alt="Driver's License" 
-                  className="w-full h-auto max-h-64 object-contain" 
-                />
+                <a 
+                  href={user.licenseImageUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img 
+                    src={user.licenseImageUrl} 
+                    alt="Driver's License" 
+                    className="w-full h-auto max-h-64 object-contain" 
+                  />
+                  <div className="p-2 text-xs text-blue-600 flex items-center justify-end">
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Open in new tab
+                  </div>
+                </a>
               </div>
             ) : (
               <div className="border rounded-lg p-12 text-center bg-gray-50">

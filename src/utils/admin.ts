@@ -116,3 +116,70 @@ export async function pushPendingVerifications() {
     };
   }
 }
+
+// Function to approve all pending verifications immediately
+export async function approveAllPendingVerifications(adminUserId: string) {
+  try {
+    // Get all pending verifications
+    const { data: pendingProfiles, error } = await (supabase as any)
+      .from('profiles')
+      .select('id, license_status')
+      .eq('license_status', 'pending_verification');
+    
+    if (error) throw error;
+    
+    if (!pendingProfiles || pendingProfiles.length === 0) {
+      return { 
+        success: true, 
+        count: 0, 
+        message: 'No pending verifications found to approve'
+      };
+    }
+    
+    // Process each pending verification
+    let successCount = 0;
+    
+    for (const profile of pendingProfiles) {
+      // Update the profile status
+      const { error: updateError } = await (supabase as any)
+        .from('profiles')
+        .update({ license_status: 'verified' })
+        .eq('id', profile.id);
+      
+      if (updateError) {
+        console.error(`Error updating profile ${profile.id}:`, updateError);
+        continue;
+      }
+      
+      // Log the approval action
+      const { error: logError } = await (supabase as any)
+        .from('kyc_review_logs')
+        .insert({
+          user_id: profile.id,
+          reviewer_id: adminUserId,
+          action: 'approve',
+          reason: 'Bulk approval by admin',
+          previous_status: profile.license_status,
+          new_status: 'verified'
+        });
+      
+      if (logError) {
+        console.error(`Error logging approval for profile ${profile.id}:`, logError);
+      }
+      
+      successCount++;
+    }
+    
+    return {
+      success: true,
+      count: successCount,
+      message: `Successfully approved ${successCount} out of ${pendingProfiles.length} pending verifications`
+    };
+  } catch (error) {
+    console.error('Error approving all pending verifications:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}

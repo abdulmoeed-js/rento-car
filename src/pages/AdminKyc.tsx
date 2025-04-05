@@ -2,10 +2,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -23,7 +20,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { KycUserDetails } from "@/components/admin/KycUserDetails";
 import { KycActionDialog } from "@/components/admin/KycActionDialog";
 import { useAuth } from "@/context/AuthContext";
-import { pushPendingVerifications } from "@/utils/admin";
+import { pushPendingVerifications, approveAllPendingVerifications, bulkApproveOldestPending } from "@/utils/admin";
 
 type KycUser = {
   id: string;
@@ -46,32 +43,36 @@ const AdminKyc = () => {
   const [actionReason, setActionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [showOnlyPending, setShowOnlyPending] = useState(false);
 
-  // Fetch users with pending license verification
+  // Fetch users with license submissions
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["kyc-users", showOnlyPending],
     queryFn: async () => {
-      // We need to cast the entire query to any due to missing type definitions
+      // Cast to any due to missing type definitions
       let query = (supabase as any)
         .from("profiles")
         .select("*, users:auth.users(email, created_at)")
-        .order("license_uploaded_at", { ascending: true });
+        .not("license_status", "eq", "not_submitted")
+        .not("license_status", "is", null)
+        .order("license_uploaded_at", { ascending: false });
       
       if (showOnlyPending) {
         query = query.eq("license_status", "pending_verification");
-      } else {
-        query = query.not("license_status", "eq", "verified");
       }
 
       const { data: profiles, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching profiles:", error);
+        throw error;
+      }
 
       return profiles.map((profile: any) => ({
         id: profile.id,
-        email: profile.users.email,
-        created_at: profile.users.created_at,
+        email: profile.users?.email || 'Unknown',
+        created_at: profile.users?.created_at || new Date().toISOString(),
         licenseImageUrl: profile.license_image_url,
         licenseStatus: profile.license_status,
         licenseUploadedAt: profile.license_uploaded_at,
@@ -107,7 +108,7 @@ const AdminKyc = () => {
         currentAction === "reject" ? "rejected" : 
         "pending_reupload";
 
-      // We need to cast to any because profiles table is not in type definitions
+      // Cast to any because profiles table is not in type definitions
       const { error: updateError } = await (supabase as any)
         .from("profiles")
         .update({ license_status: newStatus })
@@ -116,7 +117,7 @@ const AdminKyc = () => {
       if (updateError) throw updateError;
 
       // Log the KYC review action
-      // We need to cast to any because kyc_review_logs table is not in type definitions
+      // Cast to any because kyc_review_logs table is not in type definitions
       const { error: logError } = await (supabase as any)
         .from("kyc_review_logs")
         .insert({
@@ -189,80 +190,45 @@ const AdminKyc = () => {
     }
   };
 
-  const bulkApproveOldestPending = async () => {
-    // Filter for users with pending_verification status
-    const pendingUsers = users.filter(user => 
-      user.licenseStatus === 'pending_verification' && user.licenseUploadedAt
-    );
-    
-    if (pendingUsers.length === 0) {
+  const handleApproveAllPending = async () => {
+    if (!currentUser?.id) {
       toast({
-        title: "No action needed",
-        description: "There are no pending verifications to process.",
+        title: "Authentication error",
+        description: "You must be logged in as an admin to perform this action.",
+        variant: "destructive",
       });
       return;
     }
     
-    // Sort by upload date (oldest first)
-    pendingUsers.sort((a, b) => {
-      if (!a.licenseUploadedAt || !b.licenseUploadedAt) return 0;
-      return new Date(a.licenseUploadedAt).getTime() - new Date(b.licenseUploadedAt).getTime();
-    });
-    
-    // Get the oldest 5 or fewer
-    const usersToProcess = pendingUsers.slice(0, 5);
-    
-    setIsSubmitting(true);
+    setIsApprovingAll(true);
     
     try {
-      let successCount = 0;
+      const result = await approveAllPendingVerifications(currentUser.id);
       
-      for (const user of usersToProcess) {
-        // Update the user's license status
-        const { error: updateError } = await (supabase as any)
-          .from("profiles")
-          .update({ license_status: "verified" })
-          .eq("id", user.id);
-          
-        if (updateError) {
-          console.error(`Error updating user ${user.id}:`, updateError);
-          continue;
-        }
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
         
-        // Log the KYC review action
-        const { error: logError } = await (supabase as any)
-          .from("kyc_review_logs")
-          .insert({
-            user_id: user.id,
-            reviewer_id: currentUser?.id,
-            action: "approve",
-            reason: "Automatically approved by system",
-            previous_status: user.licenseStatus,
-            new_status: "verified"
-          });
-          
-        if (logError) {
-          console.error(`Error logging approval for user ${user.id}:`, logError);
-        }
-        
-        successCount++;
+        // Refresh the list to show the updated statuses
+        refetch();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to approve pending verifications.",
+          variant: "destructive",
+        });
       }
-      
-      toast({
-        title: "Bulk processing complete",
-        description: `Successfully approved ${successCount} out of ${usersToProcess.length} pending verifications.`,
-      });
-      
-      refetch();
     } catch (error) {
-      console.error('Error performing bulk approval:', error);
+      console.error("Error approving all verifications:", error);
       toast({
         title: "Error",
-        description: "Failed to complete bulk approval. Please try again.",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsApprovingAll(false);
     }
   };
 
@@ -274,6 +240,8 @@ const AdminKyc = () => {
         return <X className="h-5 w-5 text-red-500" />;
       case 'pending_reupload':
         return <UploadCloud className="h-5 w-5 text-blue-500" />;
+      case 'verified':
+        return <Check className="h-5 w-5 text-green-500" />;
       default:
         return null;
     }
@@ -304,17 +272,18 @@ const AdminKyc = () => {
               </label>
             </div>
             <Button 
-              onClick={bulkApproveOldestPending} 
-              disabled={isSubmitting}
-              variant="outline"
+              onClick={handleApproveAllPending} 
+              disabled={isApprovingAll || isSubmitting}
+              variant="default"
               className="flex items-center gap-2"
             >
               <Check className="h-4 w-4" />
-              Process Oldest Pending
+              Approve All Pending
             </Button>
             <Button 
               onClick={handlePushPendingVerifications} 
               disabled={isPushing}
+              variant="outline"
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isPushing ? "animate-spin" : ""}`} />
@@ -327,12 +296,13 @@ const AdminKyc = () => {
           <div className="text-center py-8">Loading user data...</div>
         ) : users.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-lg text-gray-600">No pending verifications</p>
+            <p className="text-lg text-gray-600">No license submissions found</p>
+            <p className="text-sm text-gray-500 mt-2">Click "Find New Uploads" to check for new submissions</p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <Table>
-              <TableCaption>List of users pending KYC verification</TableCaption>
+              <TableCaption>List of users with license submissions</TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead>Status</TableHead>
