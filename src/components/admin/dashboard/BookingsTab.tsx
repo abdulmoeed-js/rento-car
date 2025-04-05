@@ -26,7 +26,7 @@ export const BookingsTab: React.FC = () => {
         .select(`
           *,
           cars (*),
-          user:user_id (email)
+          profiles:user_id (full_name, phone_number)
         `);
 
       // Apply filters
@@ -72,7 +72,7 @@ export const BookingsTab: React.FC = () => {
       const csvData = bookings.map(booking => ({
         id: booking.id,
         car: `${booking.cars?.brand} ${booking.cars?.model}`,
-        user: booking.user?.email,
+        user: booking.profiles?.full_name || 'Unknown User',
         status: booking.status,
         start_date: booking.start_date,
         end_date: booking.end_date,
@@ -203,7 +203,7 @@ export const BookingsTab: React.FC = () => {
                         <TableCell>
                           {booking.cars?.brand} {booking.cars?.model}
                         </TableCell>
-                        <TableCell>{booking.user?.email}</TableCell>
+                        <TableCell>{booking.profiles?.full_name || 'Unknown User'}</TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :

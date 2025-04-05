@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,24 +33,17 @@ export const HostsTab: React.FC = () => {
         return acc;
       }, {});
       
-      // Get host information (in a real app, you'd have a hosts table)
-      // For this example, we'll use the user profiles with license_status as a proxy for approval status
+      // Get host information from profiles
+      const hostIds = Object.keys(hostCars);
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, license_status');
+        .select('id, full_name, license_status, license_uploaded_at, phone_number');
       
       if (profilesError) throw profilesError;
       
-      // Get host emails
-      const hostIds = Object.keys(hostCars);
-      const { data: userData, error: userError } = await supabase
-        .from('auth.users')
-        .select('id, email')
-        .in('id', hostIds);
-      
-      // This is just for demonstration since we can't actually query auth.users directly
-      // In a real app, you'd store this information in your profiles table
-      const mockUserData = hostIds.map(id => ({
+      // Mock email data since we can't query auth.users directly
+      // In a real app, you would have this info in your profiles table
+      const mockEmailsForHosts = hostIds.map(id => ({
         id,
         email: `host_${id.substring(0, 5)}@example.com`
       }));
@@ -59,11 +51,11 @@ export const HostsTab: React.FC = () => {
       // Combine the data
       const hostsData = hostIds.map(hostId => {
         const profile = profilesData.find(p => p.id === hostId) || {};
-        const user = mockUserData.find(u => u.id === hostId) || {};
+        const mockUser = mockEmailsForHosts.find(u => u.id === hostId) || { email: 'unknown@example.com' };
         
         return {
           id: hostId,
-          email: user.email,
+          email: mockUser.email,
           name: profile.full_name || 'Unknown Host',
           carCount: hostCars[hostId].length,
           approvalStatus: profile.license_status || 'not_submitted',
