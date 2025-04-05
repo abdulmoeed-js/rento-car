@@ -7,10 +7,7 @@ export async function getCars(filters?: CarFilters) {
   try {
     let query = supabase
       .from('cars')
-      .select(`
-        *,
-        car_images (*)
-      `);
+      .select('*, car_images(*)');
 
     // Apply filters if provided
     if (filters) {
@@ -20,13 +17,13 @@ export async function getCars(filters?: CarFilters) {
       if (filters.maxPrice !== undefined) {
         query = query.lte('price_per_day', filters.maxPrice);
       }
-      if (filters.transmission && filters.transmission !== '') {
+      if (filters.transmission && filters.transmission !== 'all') {
         query = query.eq('transmission', filters.transmission);
       }
-      if (filters.carType && filters.carType !== '') {
+      if (filters.carType && filters.carType !== 'all') {
         query = query.eq('car_type', filters.carType);
       }
-      if (filters.fuelType && filters.fuelType !== '') {
+      if (filters.fuelType && filters.fuelType !== 'all') {
         query = query.eq('fuel_type', filters.fuelType);
       }
     }
@@ -38,12 +35,12 @@ export async function getCars(filters?: CarFilters) {
     }
 
     // Format the data to match our Car type
-    const cars = data.map((car) => {
+    const cars = data?.map((car: any) => {
       return {
         ...car,
         images: car.car_images || []
       } as Car;
-    });
+    }) || [];
 
     return cars;
   } catch (error) {
@@ -57,11 +54,7 @@ export async function getCarById(id: string) {
   try {
     const { data, error } = await supabase
       .from('cars')
-      .select(`
-        *,
-        car_images (*),
-        bookings (*)
-      `)
+      .select('*, car_images(*), bookings(*)')
       .eq('id', id)
       .single();
 
@@ -73,18 +66,18 @@ export async function getCarById(id: string) {
     const { data: ratingData } = await supabase
       .from('host_ratings')
       .select('rating')
-      .eq('host_id', data.host_id);
+      .eq('host_id', data?.host_id);
 
     const hostRating = ratingData && ratingData.length > 0
-      ? ratingData.reduce((sum, item) => sum + item.rating, 0) / ratingData.length
+      ? ratingData.reduce((sum: number, item: any) => sum + item.rating, 0) / ratingData.length
       : 0;
 
     // Format the car data
-    const car = {
+    const car = data ? {
       ...data,
       images: data.car_images || [],
       host_rating: hostRating,
-    } as Car;
+    } as Car : null;
 
     return car;
   } catch (error) {

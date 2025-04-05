@@ -66,7 +66,7 @@ const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
             <SelectValue placeholder="Any" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Any</SelectItem>
+            <SelectItem value="all">Any</SelectItem>
             <SelectItem value="automatic">Automatic</SelectItem>
             <SelectItem value="manual">Manual</SelectItem>
           </SelectContent>
@@ -81,7 +81,7 @@ const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
             <SelectValue placeholder="Any" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Any</SelectItem>
+            <SelectItem value="all">Any</SelectItem>
             <SelectItem value="sedan">Sedan</SelectItem>
             <SelectItem value="suv">SUV</SelectItem>
             <SelectItem value="sports">Sports</SelectItem>
@@ -99,7 +99,7 @@ const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
             <SelectValue placeholder="Any" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Any</SelectItem>
+            <SelectItem value="all">Any</SelectItem>
             <SelectItem value="gasoline">Gasoline</SelectItem>
             <SelectItem value="diesel">Diesel</SelectItem>
             <SelectItem value="hybrid">Hybrid</SelectItem>
