@@ -1,19 +1,21 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { 
   Shield, 
   Users, 
   Car, 
   Calendar, 
   LogOut,
-  Menu
+  Menu,
+  LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
+  { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "KYC Verification", href: "/admin/kyc", icon: Shield },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Cars", href: "/admin/cars", icon: Car },
@@ -22,6 +24,7 @@ const navItems = [
 
 export const AdminHeader: React.FC = () => {
   const { signOut } = useAuth();
+  const location = useLocation();
 
   const NavItems = () => (
     <>
@@ -29,7 +32,9 @@ export const AdminHeader: React.FC = () => {
         <Link
           key={item.href}
           to={item.href}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100"
+          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 ${
+            location.pathname === item.href ? 'bg-gray-100' : ''
+          }`}
         >
           <item.icon className="h-5 w-5" />
           {item.label}
@@ -42,7 +47,7 @@ export const AdminHeader: React.FC = () => {
     <header className="bg-white border-b sticky top-0 z-30">
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         <div className="flex items-center">
-          <Link to="/admin" className="font-bold text-xl flex items-center gap-2">
+          <Link to="/admin/dashboard" className="font-bold text-xl flex items-center gap-2">
             <Shield className="h-6 w-6" />
             <span>Rento Admin</span>
           </Link>
@@ -66,7 +71,7 @@ export const AdminHeader: React.FC = () => {
           </SheetTrigger>
           <SheetContent>
             <div className="flex flex-col space-y-4 py-4">
-              <Link to="/admin" className="font-bold text-xl flex items-center gap-2 pb-2 border-b mb-2">
+              <Link to="/admin/dashboard" className="font-bold text-xl flex items-center gap-2 pb-2 border-b mb-2">
                 <Shield className="h-6 w-6" />
                 <span>Rento Admin</span>
               </Link>
