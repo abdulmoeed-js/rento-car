@@ -78,9 +78,9 @@ export async function pushPendingVerifications() {
     // Find all records that need to be pushed to admin review
     const { data: profiles, error } = await (supabase as any)
       .from('profiles')
-      .select('id, license_status, license_uploaded_at')
-      .in('license_status', ['not_submitted', null])
-      .is('license_image_url', 'not.null'); // Only include records with an image
+      .select('id, license_status, license_uploaded_at, license_image_url')
+      .or('license_status.is.null,license_status.eq.not_submitted')
+      .not('license_image_url', 'is', null); // Only include records with an image
     
     if (error) throw error;
     
