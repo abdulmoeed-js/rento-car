@@ -56,13 +56,18 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
   }
 
   // Add required properties for the Car interface compatibility
-  return data.map(car => ({
-    ...(car as any),
-    host_rating: 4.5, // Placeholder value
-    availability: true, // Add missing required property
-    image_url: car.images && car.images[0] ? car.images[0].image_path : '', // Add missing required property with null check
-    trust_rating: 4.5, // Add missing required property
-  })) as Car[];
+  return data.map(car => {
+    // Type assertion for car.images
+    const carImages = car.images as any[] || []; 
+    
+    return {
+      ...(car as any),
+      host_rating: 4.5, // Placeholder value
+      availability: true, // Add missing required property
+      image_url: carImages.length > 0 ? carImages[0].image_path : '', // Fixed property access
+      trust_rating: 4.5, // Add missing required property
+    };
+  }) as Car[];
 };
 
 // Function to fetch a single car by ID
@@ -80,12 +85,15 @@ export const getCarById = async (id: string): Promise<Car | null> => {
 
     if (error) throw error;
     
+    // Type assertion for data.images
+    const carImages = data.images as any[] || [];
+    
     // Add placeholder host_rating for compatibility
     return {
       ...(data as any),
       host_rating: 4.5, // Placeholder value
       availability: true, // Add missing required property
-      image_url: data.images && data.images[0] ? data.images[0].image_path : '', // Add missing required property with null check
+      image_url: carImages.length > 0 ? carImages[0].image_path : '', // Fixed property access
       trust_rating: 4.5, // Add missing required property
     } as Car;
   } catch (error) {
