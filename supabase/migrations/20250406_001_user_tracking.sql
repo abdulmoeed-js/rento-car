@@ -8,13 +8,15 @@ BEGIN
     id, 
     full_name, 
     phone_number,
-    license_status
+    license_status,
+    user_role
   )
   VALUES (
     NEW.id, 
     NEW.raw_user_meta_data->>'full_name', 
     NEW.raw_user_meta_data->>'phone_number',
-    'not_uploaded'
+    'not_uploaded',
+    NEW.raw_user_meta_data->>'user_role'
   );
   RETURN NEW;
 END;

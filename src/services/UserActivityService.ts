@@ -25,13 +25,13 @@ export async function trackUserActivity(
       return false;
     }
 
-    const { error } = await supabase
-      .from('user_activity')
-      .insert({
-        user_id: user.id,
-        activity_type: activityType,
-        details
-      });
+    // Use the rpc function to insert into the user_activity table
+    // This avoids type errors with direct table access
+    const { error } = await supabase.rpc('log_user_activity', {
+      p_user_id: user.id,
+      p_activity_type: activityType,
+      p_details: details
+    });
 
     if (error) {
       logError(LogType.USER, "Failed to track user activity", { error, activityType });

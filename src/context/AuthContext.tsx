@@ -11,6 +11,7 @@ interface User {
   phone?: string;
   licenseStatus: 'not_uploaded' | 'pending_verification' | 'verified' | 'rejected' | 'pending_reupload';
   licenseImage?: string;
+  userRole?: 'renter' | 'host';
 }
 
 interface AuthContextType {
@@ -18,9 +19,9 @@ interface AuthContextType {
   isLoading: boolean;
   authMethod: 'email' | 'phone' | null;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signInWithPhone: (phone: string) => Promise<void>;
+  signInWithPhone: (phone: string, userRole?: string) => Promise<void>;
   verifyOtp: (otp: string) => Promise<void>;
-  signUp: (email: string, password: string, phone?: string) => Promise<void>;
+  signUp: (email: string, password: string, phone?: string, userRole?: string) => Promise<void>;
   uploadLicense: (licenseImage: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => void;
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: session.user.phone || undefined,
             licenseStatus: (profileData?.license_status as any) || 'not_uploaded',
             licenseImage: profileData?.license_image_url,
+            userRole: profileData?.user_role || 'renter',
           });
           
           setAuthMethod(session.user.email ? 'email' : 'phone');
@@ -116,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: session.user.phone || undefined,
             licenseStatus: (profileData?.license_status as any) || 'not_uploaded',
             licenseImage: profileData?.license_image_url,
+            userRole: profileData?.user_role || 'renter',
           });
           
           setAuthMethod(session.user.email ? 'email' : 'phone');
@@ -162,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithPhone = async (phone: string) => {
+  const signInWithPhone = async (phone: string, userRole: string = 'renter') => {
     logInfo(LogType.AUTH, "Attempting phone sign in", { phone: phone.substring(0, 6) + "XXXX" });
     try {
       setIsLoading(true);
@@ -178,6 +181,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const formattedPhone = `+1${phone}`; // Add country code for US numbers
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
+        options: {
+          data: {
+            user_role: userRole
+          }
+        }
       });
       
       if (error) throw error;
@@ -188,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Store the phone temporarily for verification
       localStorage.setItem('rentoTempPhone', formattedPhone);
+      localStorage.setItem('rentoTempUserRole', userRole);
     } catch (error: any) {
       logError(LogType.AUTH, "Phone sign in error", { error: error.message });
       toast.error(error.message || 'Failed to send OTP');
@@ -210,6 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       const phone = localStorage.getItem('rentoTempPhone');
+      const userRole = localStorage.getItem('rentoTempUserRole') || 'renter';
+      
       if (!phone) {
         const error = new Error('Session expired, please try again');
         logError(LogType.AUTH, "OTP verification failed - session expired");
@@ -221,12 +232,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone,
         token: otp,
         type: 'sms',
+        options: {
+          data: {
+            user_role: userRole
+          }
+        }
       });
       
       if (error) throw error;
       
       // User will be updated via the auth state change listener
       localStorage.removeItem('rentoTempPhone');
+      localStorage.removeItem('rentoTempUserRole');
       
       // Note: User profile is created via database trigger
       
@@ -240,8 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, phone?: string) => {
-    logInfo(LogType.AUTH, "Attempting sign up", { email, hasPhone: !!phone });
+  const signUp = async (email: string, password: string, phone?: string, userRole: string = 'renter') => {
+    logInfo(LogType.AUTH, "Attempting sign up", { email, hasPhone: !!phone, userRole });
     try {
       setIsLoading(true);
       
@@ -261,6 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             full_name: email.split('@')[0], // Default name from email
             phone_number: phone,
+            user_role: userRole
           },
         },
       });
@@ -322,10 +340,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       logInfo(LogType.KYC, "License uploaded successfully", { userId: user.id });
-      toast.success('License uploaded successfully! Verification pending.');
     } catch (error: any) {
       logError(LogType.KYC, "License upload error", { error: error.message });
-      toast.error(error.message || 'Failed to upload license');
       throw error;
     } finally {
       setIsLoading(false);

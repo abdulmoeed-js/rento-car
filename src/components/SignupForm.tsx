@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { Mail, Smartphone, Eye, EyeOff } from "lucide-react";
+import { Mail, Smartphone, Eye, EyeOff, Car, Home } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface SignupFormProps {
   onPhoneSubmit: () => void;
@@ -19,11 +20,12 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
   const [phone, setPhone] = useState("");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
+  const [userRole, setUserRole] = useState<"renter" | "host">("renter");
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signUp(email, password);
+      await signUp(email, password, undefined, userRole);
     } catch (error) {
       console.error("Signup error:", error);
     }
@@ -32,7 +34,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
   const handlePhoneSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signInWithPhone(phone);
+      await signInWithPhone(phone, userRole);
       onPhoneSubmit();
     } catch (error) {
       console.error("Phone signup error:", error);
@@ -62,6 +64,38 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
               <Smartphone className="h-4 w-4" /> Phone
             </TabsTrigger>
           </TabsList>
+          
+          {/* User role selection */}
+          <div className="mb-6">
+            <Label className="block mb-2">How do you plan to use Rento?</Label>
+            <RadioGroup 
+              value={userRole} 
+              onValueChange={(value) => setUserRole(value as "renter" | "host")} 
+              className="grid grid-cols-2 gap-4"
+            >
+              <Label
+                htmlFor="role-renter"
+                className={`flex flex-col items-center justify-center border rounded-lg p-4 cursor-pointer ${
+                  userRole === "renter" ? "border-rento-blue bg-rento-blue/5" : "border-gray-200"
+                }`}
+              >
+                <RadioGroupItem value="renter" id="role-renter" className="sr-only" />
+                <Car className={`h-8 w-8 mb-2 ${userRole === "renter" ? "text-rento-blue" : "text-gray-400"}`} />
+                <span className="text-sm font-medium">Rent a Car</span>
+              </Label>
+              
+              <Label 
+                htmlFor="role-host"
+                className={`flex flex-col items-center justify-center border rounded-lg p-4 cursor-pointer ${
+                  userRole === "host" ? "border-rento-blue bg-rento-blue/5" : "border-gray-200"
+                }`}
+              >
+                <RadioGroupItem value="host" id="role-host" className="sr-only" />
+                <Home className={`h-8 w-8 mb-2 ${userRole === "host" ? "text-rento-blue" : "text-gray-400"}`} />
+                <span className="text-sm font-medium">List My Car</span>
+              </Label>
+            </RadioGroup>
+          </div>
           
           <TabsContent value="email">
             <form onSubmit={handleEmailSignup} className="space-y-4">

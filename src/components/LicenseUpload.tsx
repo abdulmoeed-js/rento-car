@@ -29,16 +29,13 @@ const LicenseUpload: React.FC = () => {
     
     try {
       await uploadLicense(imageData);
-      toast({
-        title: "License uploaded",
+      toast.success("License uploaded", {
         description: "Your license has been submitted for verification."
       });
     } catch (error) {
       console.error("Error uploading license:", error);
-      toast({
-        title: "Upload failed",
-        description: "There was an error uploading your license. Please try again.",
-        variant: "destructive",
+      toast.error("Upload failed", {
+        description: "There was an error uploading your license. Please try again."
       });
     } finally {
       setIsUploading(false);
@@ -58,16 +55,13 @@ const LicenseUpload: React.FC = () => {
       
       try {
         await uploadLicense(imageData);
-        toast({
-          title: "License uploaded",
+        toast.success("License uploaded", {
           description: "Your license has been submitted for verification."
         });
       } catch (error) {
         console.error("Error uploading license:", error);
-        toast({
-          title: "Upload failed",
-          description: "There was an error uploading your license. Please try again.",
-          variant: "destructive",
+        toast.error("Upload failed", {
+          description: "There was an error uploading your license. Please try again."
         });
       } finally {
         setIsUploading(false);
