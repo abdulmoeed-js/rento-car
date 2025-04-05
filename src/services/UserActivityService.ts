@@ -25,12 +25,12 @@ export async function trackUserActivity(
       return false;
     }
 
-    // Use the rpc function to insert into the user_activity table
-    // This avoids type errors with direct table access
-    const { error } = await supabase.rpc('log_user_activity', {
-      p_user_id: user.id,
-      p_activity_type: activityType,
-      p_details: details
+    // Call the stored procedure directly with a raw query
+    // This avoids type errors with the rpc method
+    const { error } = await supabase.from('user_activity').insert({
+      user_id: user.id,
+      activity_type: activityType,
+      details: details
     });
 
     if (error) {

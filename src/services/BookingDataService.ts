@@ -28,7 +28,7 @@ interface BookingResponseItem {
     phone_number: string | null;
     license_status?: string | null;
     [key: string]: any;
-  };
+  } | null;
 }
 
 export async function fetchBookings(
@@ -62,9 +62,21 @@ export async function fetchBookings(
     const allLocations = new Set<string>();
     
     // Transform the response to match our Booking type
-    const bookings: Booking[] = (bookingsData as BookingResponseItem[]).map((item) => {
+    // Cast the data explicitly to handle potential type mismatches
+    const bookingsWithTypeChecks = (bookingsData || []).map((item: any) => {
       if (item.cars?.location) {
         allLocations.add(item.cars.location);
+      }
+      
+      // Check if profiles exists and has the expected shape
+      let profileData = null;
+      if (item.profiles && typeof item.profiles === 'object' && !item.profiles.error) {
+        profileData = {
+          id: item.profiles.id,
+          full_name: item.profiles.full_name,
+          phone_number: item.profiles.phone_number,
+          license_status: item.profiles.license_status,
+        };
       }
       
       return {
@@ -81,19 +93,14 @@ export async function fetchBookings(
           images: [],
           bookings: [],
         } : undefined,
-        profiles: item.profiles ? {
-          id: item.profiles.id,
-          full_name: item.profiles.full_name,
-          phone_number: item.profiles.phone_number,
-          license_status: item.profiles.license_status,
-        } : undefined,
+        profiles: profileData,
       };
     }) as Booking[];
 
     // Filter by location if specified
     const filteredBookings = locationFilter
-      ? bookings.filter((booking) => booking.cars?.location === locationFilter)
-      : bookings;
+      ? bookingsWithTypeChecks.filter((booking) => booking.cars?.location === locationFilter)
+      : bookingsWithTypeChecks;
 
     // Filter flagged bookings if needed
     const finalBookings = flaggedFilter

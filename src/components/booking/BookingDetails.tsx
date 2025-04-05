@@ -5,25 +5,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-interface BookingDetailsProps {
+export interface BookingDetailsProps {
   location: string;
-  message: string;
-  preferWhatsApp: boolean;
+  pickupTime: string;
+  returnTime: string;
+  message?: string;
+  preferWhatsApp?: boolean;
   onLocationChange: (value: string) => void;
   onMessageChange: (value: string) => void;
   onWhatsAppPreferenceChange: (checked: boolean) => void;
+  onSubmit: (pickupTime: string, returnTime: string, location: string, message?: string, preferWhatsApp?: boolean) => void;
+  onBack: () => void;
 }
 
 const BookingDetails: React.FC<BookingDetailsProps> = ({
   location,
-  message,
-  preferWhatsApp,
+  pickupTime,
+  returnTime,
+  message = "",
+  preferWhatsApp = false,
   onLocationChange,
   onMessageChange,
   onWhatsAppPreferenceChange,
+  onSubmit,
+  onBack,
 }) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(pickupTime, returnTime, location, message, preferWhatsApp);
+  };
+
   return (
-    <>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="location">Pickup/Return Location</Label>
         <Input
@@ -54,7 +67,16 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
         />
         <Label htmlFor="whatsapp-preference">Send booking notifications via WhatsApp</Label>
       </div>
-    </>
+
+      <div className="flex justify-between pt-4">
+        <Button type="button" variant="outline" onClick={onBack}>
+          Back
+        </Button>
+        <Button type="submit">
+          Continue
+        </Button>
+      </div>
+    </form>
   );
 };
 
