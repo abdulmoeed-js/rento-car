@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [phoneNumber, setPhoneNumber] = useState<string>(''); // Store phone number for OTP verification
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
 
   useEffect(() => {
     const getSession = async () => {
