@@ -6,7 +6,7 @@ import DateSelector from "./DateSelector";
 import TimeSelector from "./TimeSelector";
 import BookingDetails from "./BookingDetails";
 import BookingSummary from "./BookingSummary";
-import BookingPayment from "./BookingPayment"; // Import the new payment component
+import BookingPayment from "./BookingPayment"; 
 import { useBookingConfirmation } from "@/hooks/useBookingConfirmation";
 import BookingConfirmation from "../BookingConfirmation";
 
@@ -14,7 +14,7 @@ enum BookingStep {
   DATE_SELECTION = 0,
   DETAILS = 1,
   REVIEW = 2,
-  PAYMENT = 3, // Add a payment step
+  PAYMENT = 3,
   CONFIRMATION = 4,
 }
 
@@ -35,6 +35,10 @@ const BookingFormManager: React.FC<BookingFormManagerProps> = ({ car }) => {
     totalPrice: car.price_per_day,
     status: "pending",
   });
+  
+  // For BookingDetails component
+  const [message, setMessage] = useState("");
+  const [preferWhatsApp, setPreferWhatsApp] = useState(false);
 
   const {
     isSubmitting,
@@ -73,19 +77,28 @@ const BookingFormManager: React.FC<BookingFormManagerProps> = ({ car }) => {
     setCurrentStep(BookingStep.REVIEW);
   };
 
+  const handleLocationChange = (value: string) => {
+    setFormData(prev => ({ ...prev, location: value }));
+  };
+
+  const handleMessageChange = (value: string) => {
+    setMessage(value);
+  };
+
+  const handleWhatsAppPreferenceChange = (checked: boolean) => {
+    setPreferWhatsApp(checked);
+  };
+
   const handleReviewSubmit = () => {
-    // Instead of submitting, go to payment step
     setCurrentStep(BookingStep.PAYMENT);
   };
 
   const handlePaymentSuccess = () => {
-    // After payment succeeds, handle the booking and move to confirmation
     handleBookNow();
     setCurrentStep(BookingStep.CONFIRMATION);
   };
 
   const handleBackFromPayment = () => {
-    // Go back to review step
     setCurrentStep(BookingStep.REVIEW);
   };
 
@@ -108,6 +121,11 @@ const BookingFormManager: React.FC<BookingFormManagerProps> = ({ car }) => {
           location={formData.location || car.location}
           pickupTime={formData.pickupTime || "10:00"}
           returnTime={formData.returnTime || "10:00"}
+          message={message}
+          preferWhatsApp={preferWhatsApp}
+          onLocationChange={handleLocationChange}
+          onMessageChange={handleMessageChange}
+          onWhatsAppPreferenceChange={handleWhatsAppPreferenceChange}
           onSubmit={handleDetailsSubmit}
           onBack={handleBackFromDetails}
         />
@@ -129,7 +147,7 @@ const BookingFormManager: React.FC<BookingFormManagerProps> = ({ car }) => {
                 totalPrice={formData.totalPrice || car.price_per_day}
                 onSubmit={handleReviewSubmit}
                 onBack={handleBackFromReview}
-                buttonText="Proceed to Payment" // Update button text
+                buttonText="Proceed to Payment"
                 isSubmitting={isSubmitting}
               />
             </CardContent>
@@ -156,7 +174,7 @@ const BookingFormManager: React.FC<BookingFormManagerProps> = ({ car }) => {
           totalDays={formData.totalDays || 1}
           totalPrice={formData.totalPrice || car.price_per_day}
           isBooked={isBooked}
-          notificationStatus={notificationStatus}
+          notificationStatus={notificationStatus || { success: false, method: 'none' }}
           onResendNotification={handleResendNotification}
         />
       )}

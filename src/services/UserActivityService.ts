@@ -25,12 +25,14 @@ export async function trackUserActivity(
       return false;
     }
 
-    // Call the stored procedure directly with a raw query
+    // Call an edge function instead of directly querying a non-existent table
     // This avoids type errors with the rpc method
-    const { error } = await supabase.from('user_activity').insert({
-      user_id: user.id,
-      activity_type: activityType,
-      details: details
+    const { error } = await supabase.functions.invoke('log-user-activity', {
+      body: {
+        user_id: user.id,
+        activity_type: activityType,
+        details: details
+      }
     });
 
     if (error) {
