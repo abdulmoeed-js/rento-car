@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       // In a real app, you'd have a profiles table with this info
       const userEmail = user?.email || '';
       const userPhone = user?.phone || '';
-      const userName = user?.user_metadata?.full_name || 'Rento User';
+      // Fix: user_metadata doesn't exist on User type
+      const userName = user?.email ? user.email.split('@')[0] : 'Rento User';
       
       const { data, error } = await supabase.functions.invoke('send-booking-notification', {
         body: {
@@ -82,6 +82,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     }
   };
 
+  
   const handleBookNow = async () => {
     setIsSubmitting(true);
     
