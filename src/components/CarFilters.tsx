@@ -18,7 +18,7 @@ interface CarFiltersProps {
 
 const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
-  const [transmission, setTransmission] = useState<"automatic" | "manual" | "">("");
+  const [transmission, setTransmission] = useState<"automatic" | "manual" | "all">("all");
   const [carType, setCarType] = useState<string>("");
   const [fuelType, setFuelType] = useState<string>("");
 
@@ -34,7 +34,7 @@ const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
 
   const handleResetFilters = () => {
     setPriceRange([0, 200]);
-    setTransmission("");
+    setTransmission("all");
     setCarType("");
     setFuelType("");
     onFilterChange({});
