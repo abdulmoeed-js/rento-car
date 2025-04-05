@@ -15,13 +15,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { Shield, Check, X, UploadCloud, Clock } from "lucide-react";
+import { Shield, Check, X, UploadCloud, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { KycUserDetails } from "@/components/admin/KycUserDetails";
 import { KycActionDialog } from "@/components/admin/KycActionDialog";
 import { useAuth } from "@/context/AuthContext";
+import { pushPendingVerifications } from "@/utils/admin";
 
 type KycUser = {
   id: string;
@@ -43,6 +44,7 @@ const AdminKyc = () => {
   const [currentAction, setCurrentAction] = useState<KycAction>(null);
   const [actionReason, setActionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
 
   // Fetch users with pending license verification
   const { data: users = [], isLoading, refetch } = useQuery({
@@ -146,6 +148,38 @@ const AdminKyc = () => {
     }
   };
 
+  const handlePushPendingVerifications = async () => {
+    setIsPushing(true);
+    try {
+      const result = await pushPendingVerifications();
+      
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message || `Successfully processed ${result.count} records.`,
+        });
+        
+        // Refresh the list to show newly pushed verifications
+        refetch();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to push pending verifications.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error pushing verifications:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending_verification':
@@ -168,6 +202,14 @@ const AdminKyc = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6" /> License Verification
           </h1>
+          <Button 
+            onClick={handlePushPendingVerifications} 
+            disabled={isPushing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isPushing ? "animate-spin" : ""}`} />
+            Process Pending Uploads
+          </Button>
         </div>
 
         {isLoading ? (

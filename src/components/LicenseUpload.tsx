@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Upload, FileCheck, X } from "lucide-react";
+import { Camera, Upload, FileCheck, X, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import CameraCapture from "./CameraCapture";
 
@@ -77,7 +78,7 @@ const LicenseUpload: React.FC = () => {
         </CardHeader>
         <CardContent className="flex justify-center pb-4">
           <div className="bg-amber-100 text-amber-800 rounded-full p-4">
-            <FileCheck className="h-8 w-8" />
+            <Clock className="h-8 w-8" />
           </div>
         </CardContent>
         <CardFooter className="flex justify-center text-sm text-muted-foreground">
