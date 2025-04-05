@@ -26,13 +26,14 @@ export const getUserProfile = async (userId: string) => {
 };
 
 // Helper function to create user profile
-export const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter') => {
+export const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter', fullName: string = '') => {
   try {
     const { error } = await supabase
       .from('profiles')
       .insert({
         id: userId,
         user_role: userRole,
+        full_name: fullName,
         license_status: 'not_uploaded'
       });
     
@@ -63,6 +64,11 @@ export const signUpWithEmail = async (email: string, password: string, full_name
     });
 
     if (error) throw error;
+    
+    // Create profile if signup successful
+    if (data && data.user) {
+      await createUserProfile(data.user.id, user_role, full_name);
+    }
 
     // Return success message
     return { error: null, data };

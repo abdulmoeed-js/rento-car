@@ -14,6 +14,7 @@ import {
   signUp as signUpService
 } from '@/services/AuthService';
 import { handleUserChange } from '@/services/ProfileService';
+import { toast } from 'sonner';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -44,17 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const userData = await handleUserChange(session.user);
-        setUser(userData);
-      }
-      setIsLoading(false);
-    };
-
-    getSession();
-
+    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         const userData = await handleUserChange(session.user);
@@ -64,6 +55,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       setIsLoading(false);
     });
+
+    // Then get the initial session
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const userData = await handleUserChange(session.user);
+        setUser(userData);
+      }
+      setIsLoading(false);
+    };
+    
+    getSession();
 
     return () => {
       subscription.unsubscribe();

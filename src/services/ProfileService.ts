@@ -11,22 +11,27 @@ export const handleUserChange = async (authUser: any): Promise<User | null> => {
   }
 
   try {
-    const profile = await getUserProfile(authUser.id);
+    // Check if profile exists
+    let profile = await getUserProfile(authUser.id);
     
+    if (!profile) {
+      // If profile doesn't exist, create it with metadata from authUser
+      const userRole = authUser.user_metadata?.user_role || 'renter';
+      const fullName = authUser.user_metadata?.full_name || '';
+      
+      await createUserProfile(authUser.id, userRole, fullName);
+      
+      // Fetch the newly created profile
+      profile = await getUserProfile(authUser.id);
+      
+      if (!profile) {
+        console.error('Failed to create user profile');
+      }
+    }
+    
+    // If we have a profile, map the data
     if (profile) {
       return mapUserData(authUser, profile);
-    } else {
-      // If profile doesn't exist, create it
-      const userRole = authUser.user_metadata?.user_role || 'renter';
-      const created = await createUserProfile(authUser.id, userRole);
-      
-      if (created) {
-        // Retry getting profile
-        const newProfile = await getUserProfile(authUser.id);
-        if (newProfile) {
-          return mapUserData(authUser, newProfile);
-        }
-      }
     }
     
     // If we couldn't create a profile or retrieve it, return minimal user data
@@ -34,9 +39,9 @@ export const handleUserChange = async (authUser: any): Promise<User | null> => {
       id: authUser.id,
       email: authUser.email || '',
       phone: authUser.phone || '',
-      full_name: '',
+      full_name: authUser.user_metadata?.full_name || '',
       license_status: 'not_uploaded',
-      user_role: 'renter',
+      user_role: authUser.user_metadata?.user_role || 'renter',
     };
   } catch (error) {
     console.error('Error handling user change:', error);
