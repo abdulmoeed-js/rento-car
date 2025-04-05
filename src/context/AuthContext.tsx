@@ -1,6 +1,6 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
+import { logInfo, logError, logWarn, LogType } from "@/utils/logger";
 
 interface User {
   id: string;
@@ -41,14 +41,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // This would normally connect to a backend service
   // For now, we'll simulate authentication with localStorage
   useEffect(() => {
+    logInfo(LogType.AUTH, "Initializing authentication state");
     const storedUser = localStorage.getItem('rentoUser');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      logInfo(LogType.AUTH, "User loaded from storage", { userId: parsedUser.id });
+    } else {
+      logInfo(LogType.AUTH, "No stored user found");
     }
     setIsLoading(false);
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
+    logInfo(LogType.AUTH, "Attempting email sign in", { email });
     try {
       setIsLoading(true);
       // Simulate API call delay
@@ -56,7 +62,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // For demo, automatically "authenticate" with any valid email format
       if (!email.includes('@')) {
-        throw new Error('Invalid email format');
+        const error = new Error('Invalid email format');
+        logError(LogType.AUTH, "Email sign in failed - invalid format", { email });
+        throw error;
       }
       
       // Check if user exists in our "database" (localStorage)
@@ -64,7 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingUser = storedUsers.find((u: any) => u.email === email);
       
       if (!existingUser) {
-        throw new Error('User not found');
+        const error = new Error('User not found');
+        logError(LogType.AUTH, "Email sign in failed - user not found", { email });
+        throw error;
       }
       
       // In a real app, we would validate the password here
@@ -73,8 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(existingUser);
       localStorage.setItem('rentoUser', JSON.stringify(existingUser));
       setAuthMethod('email');
+      logInfo(LogType.AUTH, "Email sign in successful", { userId: existingUser.id });
       toast.success('Successfully signed in!');
     } catch (error: any) {
+      logError(LogType.AUTH, "Email sign in error", { error: error.message });
       toast.error(error.message || 'Failed to sign in');
       throw error;
     } finally {
@@ -83,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithPhone = async (phone: string) => {
+    logInfo(LogType.AUTH, "Attempting phone sign in", { phone: phone.substring(0, 6) + "XXXX" });
     try {
       setIsLoading(true);
       // Simulate API call delay
@@ -90,16 +103,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Basic validation for demo
       if (!/^\d{10}$/.test(phone)) {
-        throw new Error('Please enter a valid 10-digit phone number');
+        const error = new Error('Please enter a valid 10-digit phone number');
+        logError(LogType.AUTH, "Phone sign in failed - invalid format", { phone: phone.substring(0, 6) + "XXXX" });
+        throw error;
       }
       
       // In a real app, this would send an OTP to the phone number
       setAuthMethod('phone');
+      logInfo(LogType.AUTH, "OTP sent for phone sign in", { phone: phone.substring(0, 6) + "XXXX" });
       toast.success('OTP sent to your phone!');
       
       // Store the phone temporarily for verification
       localStorage.setItem('rentoTempPhone', phone);
     } catch (error: any) {
+      logError(LogType.AUTH, "Phone sign in error", { error: error.message });
       toast.error(error.message || 'Failed to send OTP');
       throw error;
     } finally {
@@ -108,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyOtp = async (otp: string) => {
+    logInfo(LogType.AUTH, "Verifying OTP");
     try {
       setIsLoading(true);
       // Simulate API call delay
@@ -115,12 +133,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // For demo, we'll accept any 6-digit OTP
       if (!/^\d{6}$/.test(otp)) {
-        throw new Error('Please enter a valid 6-digit OTP');
+        const error = new Error('Please enter a valid 6-digit OTP');
+        logError(LogType.AUTH, "OTP verification failed - invalid format");
+        throw error;
       }
       
       const phone = localStorage.getItem('rentoTempPhone');
       if (!phone) {
-        throw new Error('Session expired, please try again');
+        const error = new Error('Session expired, please try again');
+        logError(LogType.AUTH, "OTP verification failed - session expired");
+        throw error;
       }
       
       // Check if user exists
@@ -130,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existingUser) {
         setUser(existingUser);
         localStorage.setItem('rentoUser', JSON.stringify(existingUser));
+        logInfo(LogType.AUTH, "OTP verification successful - existing user", { userId: existingUser.id });
       } else {
         // Create a new user account with phone
         const newUser = {
@@ -142,11 +165,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('rentoUsers', JSON.stringify(updatedUsers));
         localStorage.setItem('rentoUser', JSON.stringify(newUser));
         setUser(newUser);
+        logInfo(LogType.AUTH, "OTP verification successful - new user created", { userId: newUser.id });
       }
       
       localStorage.removeItem('rentoTempPhone');
       toast.success('Successfully signed in!');
     } catch (error: any) {
+      logError(LogType.AUTH, "OTP verification error", { error: error.message });
       toast.error(error.message || 'Failed to verify OTP');
       throw error;
     } finally {
@@ -155,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, phone?: string) => {
+    logInfo(LogType.AUTH, "Attempting sign up", { email, hasPhone: !!phone });
     try {
       setIsLoading(true);
       // Simulate API call delay
@@ -162,13 +188,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Basic validation
       if (!email.includes('@')) {
-        throw new Error('Invalid email format');
+        const error = new Error('Invalid email format');
+        logError(LogType.AUTH, "Sign up failed - invalid email format", { email });
+        throw error;
       }
       
       // Check if user already exists
       const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
       if (storedUsers.some((u: any) => u.email === email)) {
-        throw new Error('User with this email already exists');
+        const error = new Error('User with this email already exists');
+        logError(LogType.AUTH, "Sign up failed - email already exists", { email });
+        throw error;
       }
       
       // Create new user
@@ -185,8 +215,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(newUser);
       setAuthMethod('email');
+      logInfo(LogType.AUTH, "Sign up successful", { userId: newUser.id });
       toast.success('Account created successfully!');
     } catch (error: any) {
+      logError(LogType.AUTH, "Sign up error", { error: error.message });
       toast.error(error.message || 'Failed to sign up');
       throw error;
     } finally {
@@ -195,13 +227,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const uploadLicense = async (licenseImage: string) => {
+    logInfo(LogType.KYC, "Attempting license upload");
     try {
       setIsLoading(true);
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (!user) {
-        throw new Error('You must be logged in to upload a license');
+        const error = new Error('You must be logged in to upload a license');
+        logError(LogType.KYC, "License upload failed - user not logged in");
+        throw error;
       }
       
       // Update user with license information
@@ -221,8 +256,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('rentoUser', JSON.stringify(updatedUser));
       
       setUser(updatedUser);
+      logInfo(LogType.KYC, "License uploaded successfully", { userId: user.id });
       toast.success('License uploaded successfully! Verification pending.');
     } catch (error: any) {
+      logError(LogType.KYC, "License upload error", { error: error.message });
       toast.error(error.message || 'Failed to upload license');
       throw error;
     } finally {
@@ -231,6 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (email: string) => {
+    logInfo(LogType.AUTH, "Password reset requested", { email });
     try {
       setIsLoading(true);
       // Simulate API call delay
@@ -242,14 +280,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!existingUser) {
         // For security, don't reveal if the email exists or not
+        logWarn(LogType.AUTH, "Password reset requested for non-existent email", { email });
         toast.success('If an account with that email exists, we have sent password reset instructions.');
         return;
       }
       
       // In a real app, this would send an email with password reset instructions
+      logInfo(LogType.AUTH, "Password reset email sent", { userId: existingUser.id });
       toast.success('Password reset instructions sent to your email!');
     } catch (error: any) {
       // For security, we still show success even if there's an error
+      logError(LogType.AUTH, "Password reset error", { error: error.message, email });
       toast.success('If an account with that email exists, we have sent password reset instructions.');
     } finally {
       setIsLoading(false);
@@ -257,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = () => {
+    logInfo(LogType.AUTH, "User signing out", { userId: user?.id });
     localStorage.removeItem('rentoUser');
     setUser(null);
     setAuthMethod(null);

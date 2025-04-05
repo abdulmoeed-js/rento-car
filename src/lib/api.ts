@@ -1,8 +1,11 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Car, CarFilters, BookingFormData } from "@/types/car";
 import { toast } from "sonner";
+import { logInfo, logError, LogType } from "@/utils/logger";
 
 export async function getCars(filters?: CarFilters) {
+  logInfo(LogType.CAR, "Fetching cars with filters", { filters });
   try {
     let query = supabase
       .from('cars')
@@ -41,8 +44,10 @@ export async function getCars(filters?: CarFilters) {
       } as Car;
     }) || [];
 
+    logInfo(LogType.CAR, `Successfully fetched ${cars.length} cars`);
     return cars;
   } catch (error) {
+    logError(LogType.CAR, "Error fetching cars", { error });
     toast.error('Failed to fetch cars');
     console.error('Error fetching cars:', error);
     return [];
@@ -50,6 +55,7 @@ export async function getCars(filters?: CarFilters) {
 }
 
 export async function getCarById(id: string) {
+  logInfo(LogType.CAR, "Fetching car by ID", { carId: id });
   try {
     const { data, error } = await supabase
       .from('cars')
@@ -78,8 +84,10 @@ export async function getCarById(id: string) {
       host_rating: hostRating,
     } as Car : null;
 
+    logInfo(LogType.CAR, car ? "Car fetched successfully" : "Car not found", { carId: id });
     return car;
   } catch (error) {
+    logError(LogType.CAR, "Error fetching car details", { carId: id, error });
     toast.error('Failed to fetch car details');
     console.error('Error fetching car details:', error);
     return null;
@@ -88,6 +96,12 @@ export async function getCarById(id: string) {
 
 // Check if a date range overlaps with existing bookings
 export function isDateRangeAvailable(startDate: Date, endDate: Date, bookings: any[]) {
+  logInfo(LogType.BOOKING, "Checking date range availability", { 
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    bookingsCount: bookings.length
+  });
+  
   return !bookings.some(booking => {
     if (booking.status === 'cancelled') return false;
     
@@ -104,6 +118,7 @@ export function isDateRangeAvailable(startDate: Date, endDate: Date, bookings: a
 
 // Get availability for a specific month
 export function getMonthlyAvailability(year: number, month: number, bookings: any[]) {
+  logInfo(LogType.BOOKING, "Getting monthly availability", { year, month, bookingsCount: bookings.length });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const availability = [];
 
@@ -121,6 +136,12 @@ export function getMonthlyAvailability(year: number, month: number, bookings: an
 
 // Submit booking request to Supabase
 export async function submitBooking(bookingData: BookingFormData) {
+  logInfo(LogType.BOOKING, "Submitting booking", { 
+    carId: bookingData.car.id,
+    startDate: bookingData.startDate.toISOString(),
+    endDate: bookingData.endDate.toISOString()
+  });
+  
   try {
     const { car, startDate, endDate, message, preferWhatsApp } = bookingData;
     
@@ -128,6 +149,7 @@ export async function submitBooking(bookingData: BookingFormData) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
+      logError(LogType.BOOKING, "Booking submission failed - user not logged in");
       toast.error('You must be logged in to book a car');
       return null;
     }
@@ -154,12 +176,15 @@ export async function submitBooking(bookingData: BookingFormData) {
       .single();
     
     if (error) {
+      logError(LogType.BOOKING, "Error creating booking in database", { error });
       console.error('Error creating booking:', error);
       throw error;
     }
     
+    logInfo(LogType.BOOKING, "Booking submitted successfully", { bookingId: data.id });
     return data;
   } catch (error) {
+    logError(LogType.BOOKING, "Error submitting booking", { error });
     console.error('Error submitting booking:', error);
     return null;
   }

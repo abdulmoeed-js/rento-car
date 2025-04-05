@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +8,36 @@ import { supabase } from "@/integrations/supabase/client";
 import { Download, RefreshCw, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { logInfo, logError, LogType } from "@/utils/logger";
+
+// Define types to avoid excessive type instantiation
+interface Car {
+  id: string;
+  brand: string;
+  model: string;
+  location: string;
+  price_per_day: number;
+}
+
+interface Profile {
+  full_name: string;
+  phone_number: string;
+}
+
+interface Booking {
+  id: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  flagged?: boolean;
+  user_id: string;
+  car_id: string;
+  cars?: Car;
+  profiles?: Profile;
+}
 
 export const BookingsTab: React.FC = () => {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("");
@@ -20,8 +46,13 @@ export const BookingsTab: React.FC = () => {
 
   const fetchBookings = async () => {
     setLoading(true);
+    logInfo(LogType.ADMIN, "Fetching bookings with filters", { 
+      statusFilter, 
+      locationFilter, 
+      flaggedFilter 
+    });
+    
     try {
-      // Use explicit type parameters to avoid recursion
       let query = supabase
         .from('bookings')
         .select(`
@@ -53,10 +84,11 @@ export const BookingsTab: React.FC = () => {
       if (data) {
         const uniqueLocations = [...new Set(data.map(booking => booking.cars?.location).filter(Boolean))];
         setLocations(uniqueLocations as string[]);
-        setBookings(data);
+        setBookings(data as Booking[]);
+        logInfo(LogType.ADMIN, `Successfully fetched ${data.length} bookings`);
       }
     } catch (error) {
-      console.error("Error fetching bookings:", error);
+      logError(LogType.ADMIN, "Error fetching bookings", { error });
       toast.error("Failed to load bookings");
     } finally {
       setLoading(false);
@@ -68,6 +100,7 @@ export const BookingsTab: React.FC = () => {
   }, [statusFilter, locationFilter, flaggedFilter]);
 
   const exportToCSV = () => {
+    logInfo(LogType.ADMIN, "Exporting bookings to CSV");
     try {
       // Format bookings data for CSV
       const csvData = bookings.map(booking => ({
@@ -95,9 +128,10 @@ export const BookingsTab: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
       
+      logInfo(LogType.ADMIN, "Bookings exported successfully", { count: bookings.length });
       toast.success("Bookings exported successfully");
     } catch (error) {
-      console.error("Error exporting bookings:", error);
+      logError(LogType.ADMIN, "Error exporting bookings", { error });
       toast.error("Failed to export bookings");
     }
   };

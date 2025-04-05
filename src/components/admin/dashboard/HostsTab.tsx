@@ -2,31 +2,49 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, RefreshCw, Check, X } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
+import { logInfo, logError, LogType } from "@/utils/logger";
+
+// Define interface for host data to fix type errors
+interface Host {
+  id: string;
+  cars: string[];
+  email: string;
+  full_name: string | null;
+  license_status: string | null;
+  license_uploaded_at: string | null;
+  verified: boolean;
+}
 
 export const HostsTab: React.FC = () => {
-  const [hosts, setHosts] = useState<any[]>([]);
+  const [hosts, setHosts] = useState<Host[]>([]);
   const [loading, setLoading] = useState(true);
-  const [carCountFilter, setCarCountFilter] = useState("all");
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Function to fetch hosts data
+  useEffect(() => {
+    fetchHosts();
+  }, []);
+
   const fetchHosts = async () => {
     setLoading(true);
+    logInfo(LogType.ADMIN, "Fetching hosts data");
+    
     try {
-      // First, get all cars grouped by host
+      // Get all cars with their host IDs
       const { data: carsData, error: carsError } = await supabase
         .from('cars')
-        .select('host_id, id');
+        .select('id, host_id');
       
       if (carsError) throw carsError;
       
-      // Group cars by host_id and count them
-      const hostCars = carsData.reduce((acc, car) => {
+      // Group cars by host ID
+      const hostCars = (carsData || []).reduce((acc: Record<string, string[]>, car: any) => {
+        if (!car.host_id) return acc;
+        
         if (!acc[car.host_id]) {
           acc[car.host_id] = [];
         }
@@ -36,154 +54,81 @@ export const HostsTab: React.FC = () => {
       
       // Get host information from profiles
       const hostIds = Object.keys(hostCars);
+      
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, license_status, license_uploaded_at, phone_number');
+        .select('id, full_name, license_status, license_uploaded_at')
+        .in('id', hostIds);
       
       if (profilesError) throw profilesError;
       
-      // Mock email data since we can't query auth.users directly
-      // In a real app, you would have this info in your profiles table
+      // For demo purposes, create mock email data
       const mockEmailsForHosts = hostIds.map(id => ({
         id,
-        email: `host_${id.substring(0, 5)}@example.com`
+        email: `host_${id.slice(0, 4)}@example.com`
       }));
       
       // Combine the data
       const hostsData = hostIds.map(hostId => {
-        // Use type assertion to handle empty profiles safely
+        // Use safe type handling with default values
         const profile = profilesData?.find(p => p.id === hostId) || {
+          id: hostId,
           full_name: null,
           license_status: null,
-          license_uploaded_at: null,
-          phone_number: null
+          license_uploaded_at: null
         };
         
         const mockUser = mockEmailsForHosts.find(u => u.id === hostId) || { email: 'unknown@example.com' };
         
         return {
           id: hostId,
+          cars: hostCars[hostId],
           email: mockUser.email,
-          name: profile.full_name || 'Unknown Host',
-          carCount: hostCars[hostId].length,
-          approvalStatus: profile.license_status || 'not_submitted',
-          verificationDate: profile.license_uploaded_at || null,
-          cars: hostCars[hostId]
+          full_name: profile.full_name,
+          license_status: profile.license_status,
+          license_uploaded_at: profile.license_uploaded_at,
+          verified: profile.license_status === 'verified'
         };
       });
       
-      // Apply filters
-      let filteredHosts = [...hostsData];
-      
-      if (carCountFilter !== "all") {
-        const [min, max] = carCountFilter.split("-").map(Number);
-        if (max) {
-          filteredHosts = filteredHosts.filter(host => host.carCount >= min && host.carCount <= max);
-        } else {
-          filteredHosts = filteredHosts.filter(host => host.carCount >= min);
-        }
-      }
-      
-      if (approvalStatusFilter !== "all") {
-        filteredHosts = filteredHosts.filter(host => host.approvalStatus === approvalStatusFilter);
-      }
-      
-      setHosts(filteredHosts);
+      setHosts(hostsData);
+      logInfo(LogType.ADMIN, `Successfully fetched ${hostsData.length} hosts`);
     } catch (error) {
-      console.error("Error fetching hosts:", error);
+      logError(LogType.ADMIN, "Error fetching hosts data", { error });
       toast.error("Failed to load hosts data");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchHosts();
-  }, [carCountFilter, approvalStatusFilter]);
-
-  const exportToCSV = () => {
-    try {
-      // Format hosts data for CSV
-      const csvData = hosts.map(host => ({
-        id: host.id,
-        email: host.email,
-        name: host.name,
-        car_count: host.carCount,
-        status: host.approvalStatus,
-      }));
-
-      // Convert to CSV string
-      const headers = Object.keys(csvData[0] || {}).join(',');
-      const rows = csvData.map(row => Object.values(row).join(','));
-      const csv = [headers, ...rows].join('\n');
-
-      // Create download link
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', `hosts-${new Date().toISOString().split('T')[0]}.csv`);
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      toast.success("Hosts data exported successfully");
-    } catch (error) {
-      console.error("Error exporting hosts data:", error);
-      toast.error("Failed to export hosts data");
-    }
-  };
+  // Filter hosts by search query
+  const filteredHosts = hosts.filter(host => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (host.full_name && host.full_name.toLowerCase().includes(query)) ||
+      host.email.toLowerCase().includes(query) ||
+      (host.license_status && host.license_status.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Hosts Management</h2>
-        <div className="flex gap-2">
-          <Button onClick={fetchHosts} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export to CSV
-          </Button>
-        </div>
+        <Button onClick={fetchHosts} variant="outline">Refresh</Button>
       </div>
-
+      
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="w-full md:w-1/2">
-              <label className="block text-sm font-medium mb-1">Number of Cars</label>
-              <Select value={carCountFilter} onValueChange={setCarCountFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by car count" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Hosts</SelectItem>
-                  <SelectItem value="1-3">1-3 Cars</SelectItem>
-                  <SelectItem value="4-10">4-10 Cars</SelectItem>
-                  <SelectItem value="11">11+ Cars</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-full md:w-1/2">
-              <label className="block text-sm font-medium mb-1">Approval Status</label>
-              <Select value={approvalStatusFilter} onValueChange={setApprovalStatusFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by approval status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="pending_verification">Pending</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="not_submitted">Not Submitted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="mb-6">
+            <Input
+              placeholder="Search hosts by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-md"
+            />
           </div>
-
+          
           {loading ? (
             <div className="h-64 flex items-center justify-center">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -193,49 +138,43 @@ export const HostsTab: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Host ID</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Host</TableHead>
                     <TableHead>Cars Listed</TableHead>
-                    <TableHead>Approval Status</TableHead>
-                    <TableHead>Verified</TableHead>
+                    <TableHead>Verification Status</TableHead>
+                    <TableHead>Verification Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {hosts.length === 0 ? (
+                  {filteredHosts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No hosts found matching the current filters
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No hosts found matching your search
                       </TableCell>
                     </TableRow>
                   ) : (
-                    hosts.map((host) => (
+                    filteredHosts.map((host) => (
                       <TableRow key={host.id}>
-                        <TableCell className="font-mono text-xs">{host.id.substring(0, 8)}</TableCell>
-                        <TableCell>{host.email}</TableCell>
-                        <TableCell>{host.name}</TableCell>
-                        <TableCell>{host.carCount}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{host.full_name || 'Unnamed Host'}</div>
+                            <div className="text-sm text-muted-foreground">{host.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{host.cars.length}</TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            host.approvalStatus === 'verified' ? 'bg-green-100 text-green-800' :
-                            host.approvalStatus === 'pending_verification' ? 'bg-yellow-100 text-yellow-800' :
-                            host.approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
+                            host.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {host.approvalStatus.replace('_', ' ')}
+                            {host.license_status || 'Unverified'}
                           </span>
                         </TableCell>
                         <TableCell>
-                          {host.approvalStatus === 'verified' ? (
-                            <Check className="h-5 w-5 text-green-500" />
-                          ) : (
-                            <X className="h-5 w-5 text-red-500" />
-                          )}
+                          {host.license_uploaded_at ? format(new Date(host.license_uploaded_at), 'MMM dd, yyyy') : 'Not uploaded'}
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="sm">
-                            View
+                            View Details
                           </Button>
                         </TableCell>
                       </TableRow>

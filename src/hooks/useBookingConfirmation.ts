@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BookingFormData } from "@/types/car";
 import { submitBooking } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { logInfo, logError, LogType } from "@/utils/logger";
 
 export interface NotificationStatus {
   success: boolean;
@@ -19,6 +20,7 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
   const [notificationStatus, setNotificationStatus] = useState<NotificationStatus | null>(null);
   
   const sendNotification = async (bookingId: string) => {
+    logInfo(LogType.BOOKING, "Sending booking notification", { bookingId });
     try {
       // Get user profile data for name and contact info
       const userEmail = user?.email || '';
@@ -54,8 +56,15 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
         method: data.method,
       });
       
+      logInfo(LogType.BOOKING, "Notification sent successfully", { 
+        bookingId, 
+        method: data.method,
+        success: data.success
+      });
+      
       return data.success;
     } catch (error) {
+      logError(LogType.BOOKING, "Error sending notification", { bookingId, error });
       console.error("Error sending notification:", error);
       setNotificationStatus({
         success: false,
@@ -66,6 +75,12 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
   };
 
   const handleBookNow = async () => {
+    logInfo(LogType.BOOKING, "Initiating booking process", { 
+      carId: bookingData.car.id,
+      startDate: format(bookingData.startDate, "yyyy-MM-dd"),
+      endDate: format(bookingData.endDate, "yyyy-MM-dd")
+    });
+    
     setIsSubmitting(true);
     
     try {
@@ -76,11 +91,14 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
         await sendNotification(result.id);
         
         setIsBooked(true);
+        logInfo(LogType.BOOKING, "Booking completed successfully", { bookingId: result.id });
         toast.success("Booking request submitted successfully!");
       } else {
+        logError(LogType.BOOKING, "Booking submission failed");
         toast.error("Failed to submit booking request");
       }
     } catch (error) {
+      logError(LogType.BOOKING, "Error in booking process", { error });
       console.error("Error submitting booking:", error);
       toast.error("Error submitting booking request");
     } finally {
@@ -89,9 +107,11 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
   };
 
   const handleResendNotification = async () => {
+    logInfo(LogType.BOOKING, "Attempting to resend notification");
     toast.promise(sendNotification('resend-notification'), {
       loading: 'Resending notification...',
       success: () => {
+        logInfo(LogType.BOOKING, "Notification resent successfully");
         return 'Notification resent successfully!';
       },
       error: 'Failed to resend notification.',
