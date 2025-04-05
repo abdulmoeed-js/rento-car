@@ -57,8 +57,9 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
 
   // Add required properties for the Car interface compatibility
   return data.map(car => {
-    // Type assertion for car.images
-    const carImages = car.images as any[] || []; 
+    // Safely handle car.images with proper type checking
+    const carImagesData = car.images;
+    const carImages = Array.isArray(carImagesData) ? carImagesData : [];
     
     return {
       ...(car as any),
@@ -85,8 +86,9 @@ export const getCarById = async (id: string): Promise<Car | null> => {
 
     if (error) throw error;
     
-    // Type assertion for data.images
-    const carImages = data.images as any[] || [];
+    // Safely handle data.images with proper type checking
+    const carImagesData = data.images;
+    const carImages = Array.isArray(carImagesData) ? carImagesData : [];
     
     // Add placeholder host_rating for compatibility
     return {
