@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
-    // Using a type assertion to work around TypeScript restrictions
+    // Cast to any to work around TypeScript restrictions for RPC function
     const { data, error } = await supabase
-      .rpc('has_role', { _user_id: userId, _role: 'admin' } as any);
+      .rpc('has_role', { _user_id: userId, _role: 'admin' }) as any;
     
     if (error) {
       console.error('Error checking admin status:', error);
@@ -21,7 +21,7 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 
 export async function getKycStats() {
   try {
-    // Using type assertion for profiles table
+    // Cast to any to work around TypeScript restrictions for profiles table
     const { data, error } = await (supabase
       .from('profiles') as any)
       .select('license_status')
@@ -46,7 +46,7 @@ export async function getKycStats() {
 
 export async function getKycLogs(limit = 100) {
   try {
-    // Using type assertion for kyc_review_logs table
+    // Cast to any to work around TypeScript restrictions for kyc_review_logs table
     const { data, error } = await (supabase
       .from('kyc_review_logs') as any)
       .select(`
