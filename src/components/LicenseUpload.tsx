@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Camera, Upload, FileCheck, X, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import CameraCapture from "./CameraCapture";
 import { trackUserActivity, ActivityType } from "@/services/UserActivityService";
+import LicenseVerified from "./license/LicenseVerified";
+import LicensePending from "./license/LicensePending";
+import LicenseRejected from "./license/LicenseRejected";
+import LicenseReupload from "./license/LicenseReupload";
+import LicenseUploadForm from "./license/LicenseUploadForm";
 
 const LicenseUpload: React.FC = () => {
   const { uploadLicense, user } = useAuth();
@@ -70,146 +73,44 @@ const LicenseUpload: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  if (user?.license_status === 'pending_verification') {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">License Verification Pending</CardTitle>
-          <CardDescription className="text-center">
-            Your driver's license has been uploaded and is being reviewed.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-4">
-          <div className="bg-amber-100 text-amber-800 rounded-full p-4">
-            <Clock className="h-8 w-8" />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-center text-sm text-muted-foreground">
-          This process typically takes 1-2 business days. We'll notify you once verified.
-        </CardFooter>
-      </Card>
-    );
-  }
+  // Render component based on license status
+  const renderLicenseStatus = () => {
+    if (user?.license_status === 'pending_verification') {
+      return <LicensePending />;
+    }
 
-  if (user?.license_status === 'verified') {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">License Verified</CardTitle>
-          <CardDescription className="text-center">
-            Your driver's license has been successfully verified.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-4">
-          <div className="bg-green-100 text-green-700 rounded-full p-4">
-            <FileCheck className="h-8 w-8" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+    if (user?.license_status === 'verified') {
+      return <LicenseVerified />;
+    }
 
-  if (user?.license_status === 'rejected') {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">License Rejected</CardTitle>
-          <CardDescription className="text-center">
-            Your driver's license verification failed. Please contact support for assistance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-4">
-          <div className="bg-red-100 text-red-700 rounded-full p-4">
-            <X className="h-8 w-8" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+    if (user?.license_status === 'rejected') {
+      return <LicenseRejected />;
+    }
 
-  // Using String() to ensure proper type comparison
-  if (String(user?.license_status) === 'pending_reupload') {
+    // Using String() to ensure proper type comparison
+    if (String(user?.license_status) === 'pending_reupload') {
+      return (
+        <LicenseReupload 
+          onTakePhoto={() => setShowCamera(true)}
+          onFileUpload={handleFileUpload}
+          isUploading={isUploading}
+        />
+      );
+    }
+
+    // Default: Initial upload form
     return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">Reupload Required</CardTitle>
-          <CardDescription className="text-center">
-            We need a clearer image of your driver's license. Please upload it again.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-4">
-            <Button 
-              className="flex items-center gap-2 w-full py-6" 
-              onClick={() => setShowCamera(true)}
-              disabled={isUploading}
-            >
-              <Camera className="h-5 w-5" /> Take a New Photo
-            </Button>
-            
-            <div className="relative">
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 w-full py-6"
-                disabled={isUploading}
-              >
-                <Upload className="h-5 w-5" /> Upload New Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <LicenseUploadForm 
+        onTakePhoto={() => setShowCamera(true)}
+        onFileUpload={handleFileUpload}
+        isUploading={isUploading}
+      />
     );
-  }
+  };
 
   return (
     <>
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">Upload Driver's License</CardTitle>
-          <CardDescription className="text-center">
-            Please upload a clear photo of your driver's license
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-4">
-            <Button 
-              className="flex items-center gap-2 w-full py-6" 
-              onClick={() => setShowCamera(true)}
-              disabled={isUploading}
-            >
-              <Camera className="h-5 w-5" /> Take a Photo
-            </Button>
-            
-            <div className="relative">
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 w-full py-6"
-                disabled={isUploading}
-              >
-                <Upload className="h-5 w-5" /> Upload Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="text-xs text-muted-foreground text-center">
-          We only use your license for verification purposes. Your data is securely stored.
-        </CardFooter>
-      </Card>
+      {renderLicenseStatus()}
       
       {showCamera && (
         <CameraCapture 
