@@ -55,12 +55,12 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
     return [];
   }
 
-  // Add placeholder host_rating for compatibility
-  return (data as unknown[]).map(car => ({
+  // Add required properties for the Car interface compatibility
+  return data.map(car => ({
     ...(car as any),
     host_rating: 4.5, // Placeholder value
     availability: true, // Add missing required property
-    image_url: car.images?.[0]?.image_path || '', // Add missing required property
+    image_url: car.images && car.images[0] ? car.images[0].image_path : '', // Add missing required property with null check
     trust_rating: 4.5, // Add missing required property
   })) as Car[];
 };
@@ -85,7 +85,7 @@ export const getCarById = async (id: string): Promise<Car | null> => {
       ...(data as any),
       host_rating: 4.5, // Placeholder value
       availability: true, // Add missing required property
-      image_url: data.images?.[0]?.image_path || '', // Add missing required property
+      image_url: data.images && data.images[0] ? data.images[0].image_path : '', // Add missing required property with null check
       trust_rating: 4.5, // Add missing required property
     } as Car;
   } catch (error) {
@@ -100,9 +100,9 @@ export const getCars = fetchCars;
 // Function to submit a booking
 export const submitBooking = async (bookingData: BookingFormData): Promise<{ id: string } | null> => {
   try {
-    const { car, startDate, endDate, pickupTime, returnTime, location, message, totalPrice, preferWhatsApp } = bookingData;
+    const { car, startDate, endDate } = bookingData;
     
-    // Type cast the booking data to match the database schema
+    // Only include properties that match the database schema
     const bookingRecord = {
       car_id: car.id,
       start_date: startDate.toISOString().split('T')[0],

@@ -201,6 +201,7 @@ export type Database = {
           license_status: string | null
           license_uploaded_at: string | null
           phone_number: string | null
+          user_role: string | null
         }
         Insert: {
           full_name?: string | null
@@ -209,6 +210,7 @@ export type Database = {
           license_status?: string | null
           license_uploaded_at?: string | null
           phone_number?: string | null
+          user_role?: string | null
         }
         Update: {
           full_name?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           license_status?: string | null
           license_uploaded_at?: string | null
           phone_number?: string | null
+          user_role?: string | null
         }
         Relationships: []
       }
