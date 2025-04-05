@@ -1,4 +1,3 @@
-
 export interface Car {
   id: string;
   host_id: string;
@@ -50,7 +49,7 @@ export interface HostRating {
 export interface CarFilters {
   minPrice?: number;
   maxPrice?: number;
-  transmission?: 'automatic' | 'manual' | '';
+  transmission?: 'automatic' | 'manual' | 'all';
   carType?: string;
   fuelType?: string;
 }

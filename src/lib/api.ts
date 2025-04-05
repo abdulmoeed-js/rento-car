@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Car, CarFilters } from "@/types/car";
 import { toast } from "sonner";
