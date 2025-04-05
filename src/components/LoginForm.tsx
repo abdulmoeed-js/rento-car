@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { Mail, Smartphone, Eye, EyeOff } from "lucide-react";
+import { Mail, Smartphone, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface LoginFormProps {
   onPhoneSubmit: () => void;
@@ -20,22 +21,39 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
   const [phone, setPhone] = useState("");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Clear previous errors
+    setEmailError(null);
+    
     try {
-      await signInWithEmail(email, password);
-    } catch (error) {
+      const { error } = await signInWithEmail(email, password);
+      if (error) {
+        setEmailError(error);
+      }
+    } catch (error: any) {
+      setEmailError(error.message || "Failed to login. Please try again.");
       console.error("Login error:", error);
     }
   };
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Clear previous errors
+    setPhoneError(null);
+    
     try {
-      await signInWithPhone(phone);
-      onPhoneSubmit();
-    } catch (error) {
+      const { error } = await signInWithPhone(phone);
+      if (error) {
+        setPhoneError(error);
+      } else {
+        onPhoneSubmit();
+      }
+    } catch (error: any) {
+      setPhoneError(error.message || "Failed to send OTP. Please try again.");
       console.error("Phone login error:", error);
     }
   };
@@ -52,7 +70,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
         <Tabs 
           defaultValue="email" 
           value={authMethod} 
-          onValueChange={(v) => setAuthMethod(v as "email" | "phone")}
+          onValueChange={(v) => {
+            setAuthMethod(v as "email" | "phone");
+            // Clear errors when switching tabs
+            setEmailError(null);
+            setPhoneError(null);
+          }}
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -66,6 +89,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
           
           <TabsContent value="email">
             <form onSubmit={handleEmailLogin} className="space-y-4">
+              {emailError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  <AlertDescription>{emailError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -118,6 +148,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
           
           <TabsContent value="phone">
             <form onSubmit={handlePhoneLogin} className="space-y-4">
+              {phoneError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  <AlertDescription>{phoneError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
