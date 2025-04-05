@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Upload, FileCheck } from "lucide-react";
+import { Camera, Upload, FileCheck, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import CameraCapture from "./CameraCapture";
 
@@ -19,8 +19,17 @@ const LicenseUpload: React.FC = () => {
     
     try {
       await uploadLicense(imageData);
+      toast({
+        title: "License uploaded",
+        description: "Your license has been submitted for verification."
+      });
     } catch (error) {
       console.error("Error uploading license:", error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your license. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploading(false);
     }
@@ -39,8 +48,17 @@ const LicenseUpload: React.FC = () => {
       
       try {
         await uploadLicense(imageData);
+        toast({
+          title: "License uploaded",
+          description: "Your license has been submitted for verification."
+        });
       } catch (error) {
         console.error("Error uploading license:", error);
+        toast({
+          title: "Upload failed",
+          description: "There was an error uploading your license. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsUploading(false);
       }
@@ -82,6 +100,65 @@ const LicenseUpload: React.FC = () => {
         <CardContent className="flex justify-center pb-4">
           <div className="bg-green-100 text-green-700 rounded-full p-4">
             <FileCheck className="h-8 w-8" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (user?.licenseStatus === 'rejected') {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">License Rejected</CardTitle>
+          <CardDescription className="text-center">
+            Your driver's license verification failed. Please contact support for assistance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-4">
+          <div className="bg-red-100 text-red-700 rounded-full p-4">
+            <X className="h-8 w-8" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (user?.licenseStatus === 'pending_reupload') {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">Reupload Required</CardTitle>
+          <CardDescription className="text-center">
+            We need a clearer image of your driver's license. Please upload it again.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4">
+            <Button 
+              className="flex items-center gap-2 w-full py-6" 
+              onClick={() => setShowCamera(true)}
+              disabled={isUploading}
+            >
+              <Camera className="h-5 w-5" /> Take a New Photo
+            </Button>
+            
+            <div className="relative">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2 w-full py-6"
+                disabled={isUploading}
+              >
+                <Upload className="h-5 w-5" /> Upload New Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

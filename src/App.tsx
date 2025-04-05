@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
+import AdminKyc from "./pages/AdminKyc";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/cars" element={<CarListing />} />
             <Route path="/cars/:id" element={<CarDetail />} />
+            <Route path="/admin/kyc" element={<AdminKyc />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
