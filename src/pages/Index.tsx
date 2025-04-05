@@ -1,7 +1,8 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { CarFront, LogOut, User } from "lucide-react";
+import { CarFront, LogOut, User, Search } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const { user, signOut } = useAuth();
@@ -50,34 +51,49 @@ const Index = () => {
           Welcome to Rento
         </h1>
         
-        <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
-          <h2 className="text-xl font-semibold mb-2">License Status</h2>
-          
-          <div className="flex items-center gap-3 p-3 rounded-md bg-white">
-            <div className={`rounded-full w-3 h-3 ${
-              user.licenseStatus === 'verified' 
-                ? 'bg-green-500' 
-                : user.licenseStatus === 'pending_verification' 
-                  ? 'bg-amber-500' 
-                  : 'bg-red-500'
-            }`} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-2">License Status</h2>
             
-            <div>
-              <p className="font-medium">
-                {user.licenseStatus === 'verified' 
-                  ? 'Verified' 
+            <div className="flex items-center gap-3 p-3 rounded-md bg-white">
+              <div className={`rounded-full w-3 h-3 ${
+                user.licenseStatus === 'verified' 
+                  ? 'bg-green-500' 
                   : user.licenseStatus === 'pending_verification' 
-                    ? 'Pending Verification' 
-                    : 'Not Uploaded'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {user.licenseStatus === 'verified' 
-                  ? 'Your driver\'s license has been verified.' 
-                  : user.licenseStatus === 'pending_verification' 
-                    ? 'Your license is being reviewed. This can take 1-2 business days.' 
-                    : 'Please upload your driver\'s license to rent a car.'}
-              </p>
+                    ? 'bg-amber-500' 
+                    : 'bg-red-500'
+              }`} />
+              
+              <div>
+                <p className="font-medium">
+                  {user.licenseStatus === 'verified' 
+                    ? 'Verified' 
+                    : user.licenseStatus === 'pending_verification' 
+                      ? 'Pending Verification' 
+                      : 'Not Uploaded'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {user.licenseStatus === 'verified' 
+                    ? 'Your driver\'s license has been verified.' 
+                    : user.licenseStatus === 'pending_verification' 
+                      ? 'Your license is being reviewed. This can take 1-2 business days.' 
+                      : 'Please upload your driver\'s license to rent a car.'}
+                </p>
+              </div>
             </div>
+          </div>
+          
+          <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-2">Find a Car</h2>
+            <p className="text-muted-foreground mb-4">
+              Ready to hit the road? Browse our selection of cars available for rent.
+            </p>
+            <Button asChild className="w-full sm:w-auto" size="lg">
+              <Link to="/cars" className="flex items-center">
+                <Search className="mr-2 h-5 w-5" />
+                Browse Cars
+              </Link>
+            </Button>
           </div>
         </div>
       </main>

@@ -9,7 +9,157 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          car_id: string
+          created_at: string
+          end_date: string
+          id: string
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          start_date: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      car_images: {
+        Row: {
+          car_id: string
+          created_at: string
+          id: string
+          image_path: string
+          is_primary: boolean
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          id?: string
+          image_path: string
+          is_primary?: boolean
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          id?: string
+          image_path?: string
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_images_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cars: {
+        Row: {
+          brand: string
+          car_type: string
+          created_at: string
+          description: string
+          fuel_type: string
+          host_id: string
+          id: string
+          location: string
+          location_coordinates: unknown | null
+          model: string
+          price_per_day: number
+          transmission: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          brand: string
+          car_type: string
+          created_at?: string
+          description: string
+          fuel_type: string
+          host_id: string
+          id?: string
+          location: string
+          location_coordinates?: unknown | null
+          model: string
+          price_per_day: number
+          transmission: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          brand?: string
+          car_type?: string
+          created_at?: string
+          description?: string
+          fuel_type?: string
+          host_id?: string
+          id?: string
+          location?: string
+          location_coordinates?: unknown | null
+          model?: string
+          price_per_day?: number
+          transmission?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      host_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          host_id: string
+          id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          host_id: string
+          id?: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          host_id?: string
+          id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
