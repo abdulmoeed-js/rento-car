@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,32 +9,7 @@ import { Download, RefreshCw, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { logInfo, logError, LogType } from "@/utils/logger";
-
-// Define types to avoid excessive type instantiation
-interface Car {
-  id: string;
-  brand: string;
-  model: string;
-  location: string;
-  price_per_day: number;
-}
-
-interface Profile {
-  full_name: string;
-  phone_number: string;
-}
-
-interface Booking {
-  id: string;
-  status: string;
-  start_date: string;
-  end_date: string;
-  flagged?: boolean;
-  user_id: string;
-  car_id: string;
-  cars?: Car;
-  profiles?: Profile;
-}
+import { Booking, Car, Profile } from "@/types/car";
 
 export const BookingsTab: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -84,8 +59,23 @@ export const BookingsTab: React.FC = () => {
       if (data) {
         const uniqueLocations = [...new Set(data.map(booking => booking.cars?.location).filter(Boolean))];
         setLocations(uniqueLocations as string[]);
-        setBookings(data as Booking[]);
-        logInfo(LogType.ADMIN, `Successfully fetched ${data.length} bookings`);
+        
+        // Transform the data to match our Booking type
+        const transformedBookings = data.map((booking: any) => ({
+          id: booking.id,
+          car_id: booking.car_id,
+          user_id: booking.user_id,
+          start_date: booking.start_date,
+          end_date: booking.end_date,
+          status: booking.status,
+          created_at: booking.created_at,
+          updated_at: booking.updated_at,
+          cars: booking.cars,
+          profiles: booking.profiles || { full_name: 'Unknown User', phone_number: null }
+        }));
+        
+        setBookings(transformedBookings);
+        logInfo(LogType.ADMIN, `Successfully fetched ${transformedBookings.length} bookings`);
       }
     } catch (error) {
       logError(LogType.ADMIN, "Error fetching bookings", { error });
@@ -105,13 +95,13 @@ export const BookingsTab: React.FC = () => {
       // Format bookings data for CSV
       const csvData = bookings.map(booking => ({
         id: booking.id,
-        car: `${booking.cars?.brand} ${booking.cars?.model}`,
+        car: `${booking.cars?.brand || 'Unknown'} ${booking.cars?.model || 'Car'}`,
         user: booking.profiles?.full_name || 'Unknown User',
         status: booking.status,
         start_date: booking.start_date,
         end_date: booking.end_date,
-        location: booking.cars?.location,
-        price: booking.cars?.price_per_day,
+        location: booking.cars?.location || 'Unknown',
+        price: booking.cars?.price_per_day || 0,
       }));
 
       // Convert to CSV string

@@ -33,9 +33,20 @@ export interface Booking {
   user_id: string;
   start_date: string;
   end_date: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   created_at: string;
   updated_at: string;
+  cars?: Car;
+  profiles?: Profile;
+}
+
+export interface Profile {
+  id: string;
+  full_name: string | null;
+  phone_number: string | null;
+  license_status?: string | null;
+  license_uploaded_at?: string | null;
+  license_image_url?: string | null;
 }
 
 export interface HostRating {
