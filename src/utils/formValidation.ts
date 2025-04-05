@@ -21,6 +21,11 @@ export const validatePassword = (password: string): string | null => {
     return "Please enter your password";
   }
   
+  // Add more password validation if needed
+  if (password.length < 6) {
+    return "Password must be at least 6 characters";
+  }
+  
   return null;
 };
 
