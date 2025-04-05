@@ -1,33 +1,19 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { trackUserActivity, ActivityType } from '@/services/UserActivityService';
-
-export interface User {
-  id: string;
-  email: string;
-  phone: string;
-  full_name: string;
-  license_status: string;
-  user_role: string;
-}
-
-interface AuthContextProps {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  authMethod: 'email' | 'phone';
-  signUpWithEmail: (email: string, password: string, full_name: string, user_role?: 'renter' | 'host') => Promise<{ error: string | null; data: any | null }>;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithPhone: (phone: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
-  verifyOtp: (otp: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: string | null }>;
-  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
-  uploadLicense: (imageData: string) => Promise<void>;
-  signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
-}
+import { User, AuthContextProps } from '@/types/auth';
+import { 
+  signUpWithEmail,
+  signInWithEmail,
+  signInWithPhone,
+  verifyOtp as verifyOtpService,
+  signOut as signOutService,
+  resetPassword as resetPasswordService,
+  updatePassword as updatePasswordService,
+  uploadLicense as uploadLicenseService,
+  signUp as signUpService
+} from '@/services/AuthService';
+import { handleUserChange } from '@/services/ProfileService';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -57,69 +43,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [phoneNumber, setPhoneNumber] = useState<string>(''); // Store phone number for OTP verification
 
-  // Helper function to get user profile
-  const getUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return null;
-      }
-
-      return data;
-    } catch (err) {
-      console.error('Error in getUserProfile function:', err);
-      return null;
-    }
-  };
-
-  // Helper function to create user profile
-  const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter') => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          user_role: userRole,
-          license_status: 'not_uploaded'
-        });
-      
-      if (error) {
-        console.error('Error creating profile:', error);
-        return false;
-      }
-      
-      return true;
-    } catch (err) {
-      console.error('Error in createUserProfile function:', err);
-      return false;
-    }
-  };
-
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        handleUserChange(session.user);
-      } else {
-        setIsLoading(false);
+        const userData = await handleUserChange(session.user);
+        setUser(userData);
       }
+      setIsLoading(false);
     };
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
-        handleUserChange(session.user);
+        const userData = await handleUserChange(session.user);
+        setUser(userData);
       } else {
         setUser(null);
-        setIsLoading(false);
       }
+      setIsLoading(false);
     });
 
     return () => {
@@ -127,266 +70,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // When user data changes, get additional user info
-  const handleUserChange = async (authUser: any) => {
-    if (!authUser) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const profile = await getUserProfile(authUser.id);
-      
-      if (profile) {
-        const userData: User = {
-          id: authUser.id,
-          email: authUser.email || '',
-          phone: authUser.phone || '',
-          full_name: profile.full_name || '',
-          license_status: profile.license_status || 'not_uploaded',
-          user_role: profile.user_role || 'renter',
-        };
-        setUser(userData);
-      } else {
-        // If profile doesn't exist, create it
-        const userRole = authUser.user_metadata?.user_role || 'renter';
-        const created = await createUserProfile(authUser.id, userRole);
-        
-        if (created) {
-          // Retry getting profile
-          const newProfile = await getUserProfile(authUser.id);
-          if (newProfile) {
-            const userData: User = {
-              id: authUser.id,
-              email: authUser.email || '',
-              phone: authUser.phone || '',
-              full_name: newProfile.full_name || '',
-              license_status: newProfile.license_status || 'not_uploaded',
-              user_role: newProfile.user_role || 'renter',
-            };
-            setUser(userData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error handling user change:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSignUpWithEmail = async (email: string, password: string, full_name: string, user_role: 'renter' | 'host' = 'renter') => {
+    return await signUpWithEmail(email, password, full_name, user_role);
   };
 
-  async function signUpWithEmail(email: string, password: string, full_name: string, user_role: 'renter' | 'host' = 'renter') {
-    try {
-      // Create the user in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name,
-            user_role,
-          }
-        }
-      });
+  const handleSignUp = async (email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') => {
+    return await signUpService(email, password, phone, userRole);
+  };
 
-      if (error) throw error;
+  const handleSignInWithEmail = async (email: string, password: string) => {
+    setAuthMethod('email');
+    return await signInWithEmail(email, password);
+  };
 
-      // Return success message
-      return { error: null, data };
-    } catch (error: any) {
-      return { error: error.message, data: null };
-    }
-  }
+  const handleSignInWithPhone = async (phone: string, userRole: 'renter' | 'host' = 'renter') => {
+    setAuthMethod('phone');
+    setPhoneNumber(phone); // Store phone number for OTP verification
+    return await signInWithPhone(phone, userRole);
+  };
 
-  // Alias for signUpWithEmail for compatibility
-  async function signUp(email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            user_role: userRole
-          }
-        }
-      });
+  const handleVerifyOtp = async (otp: string) => {
+    return await verifyOtpService(phoneNumber, otp);
+  };
 
-      if (error) {
-        return { error: error.message };
-      }
+  const handleUploadLicense = async (imageData: string) => {
+    await uploadLicenseService(user, imageData);
+    // Update local user state
+    setUser(prev => prev ? {
+      ...prev,
+      license_status: 'pending_verification',
+    } : null);
+  };
 
-      // Create profile if signup successful
-      if (data && data.user) {
-        await createUserProfile(data.user.id, userRole);
-      }
+  const handleSignOut = async () => {
+    await signOutService();
+    setUser(null);
+  };
 
-      return { error: null };
-    } catch (error: any) {
-      return { error: error.message };
-    }
-  }
+  const handleResetPassword = async (email: string) => {
+    return await resetPasswordService(email);
+  };
 
-  async function signInWithEmail(email: string, password: string) {
-    try {
-      setAuthMethod('email');
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      const profile = await getUserProfile(data.user.id);
-      
-      if (!profile) {
-        // If profile doesn't exist, create it
-        const userRole = data.user.user_metadata?.user_role || 'renter';
-        await createUserProfile(data.user.id, userRole);
-      }
-      
-      trackUserActivity(ActivityType.LOGIN, {
-        method: 'email',
-        user_role: profile?.user_role || 'renter',
-      });
-      
-      return { error: null };
-    } catch (error: any) {
-      trackUserActivity(ActivityType.LOGIN, {
-        method: 'email',
-        error: error.message,
-        status: 'failed'
-      });
-      
-      return { error: error.message };
-    }
-  }
-
-  async function signInWithPhone(phone: string, userRole: 'renter' | 'host' = 'renter') {
-    try {
-      setAuthMethod('phone');
-      setPhoneNumber(phone); // Store phone number for OTP verification
-      
-      const { data, error } = await supabase.auth.signInWithOtp({ 
-        phone,
-        options: {
-          data: {
-            user_role: userRole
-          }
-        }
-      });
-      
-      if (error) throw error;
-      toast.success('OTP sent to your phone number');
-      return { error: null };
-    } catch (error: any) {
-      toast.error(error.message);
-      return { error: error.message };
-    }
-  }
-
-  async function verifyOtp(otp: string) {
-    try {
-      if (!phoneNumber) {
-        throw new Error('Phone number not available for verification');
-      }
-      
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: phoneNumber,
-        token: otp,
-        type: 'sms',
-      });
-
-      if (error) throw error;
-
-      // Check if user profile exists
-      const profile = await getUserProfile(data.user.id);
-
-      if (!profile) {
-        // If profile doesn't exist, create it
-        const userRole = data.user.user_metadata?.user_role || 'renter';
-        await createUserProfile(data.user.id, userRole);
-      }
-      
-      return { error: null };
-    } catch (error: any) {
-      toast.error(error.message);
-      return { error: error.message };
-    }
-  }
-
-  async function uploadLicense(imageData: string) {
-    try {
-      if (!user) throw new Error('User not authenticated');
-
-      // Update profile with license image URL and status
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          license_image_url: imageData,
-          license_status: 'pending_verification',
-          license_uploaded_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      // Update local user state
-      setUser(prev => prev ? {
-        ...prev,
-        license_status: 'pending_verification',
-      } : null);
-
-      trackUserActivity(ActivityType.LICENSE_UPDATED, {
-        action: 'upload_license',
-        previous_status: user.license_status,
-        new_status: 'pending_verification'
-      });
-
-    } catch (error: any) {
-      console.error('Error uploading license:', error);
-      toast.error('Failed to upload license');
-      throw error;
-    }
-  }
-
-  async function signOut() {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      trackUserActivity(ActivityType.LOGOUT, {
-        method: 'manual',
-      });
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  }
-
-  async function resetPassword(email: string) {
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      });
-      if (error) throw error;
-      toast.success('Password reset link sent to your email');
-      return { error: null };
-    } catch (error: any) {
-      toast.error(error.message);
-      return { error: error.message };
-    }
-  }
-
-  async function updatePassword(newPassword: string) {
-    try {
-      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      toast.success('Password updated successfully');
-      return { error: null };
-    } catch (error: any) {
-      toast.error(error.message);
-      return { error: error.message };
-    }
-  }
+  const handleUpdatePassword = async (newPassword: string) => {
+    return await updatePasswordService(newPassword);
+  };
 
   return (
     <AuthContext.Provider
@@ -395,15 +122,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading,
         isAuthenticated: !!user,
         authMethod,
-        signUpWithEmail,
-        signInWithEmail,
-        signInWithPhone,
-        verifyOtp,
-        signOut,
-        resetPassword,
-        updatePassword,
-        uploadLicense,
-        signUp,
+        signUpWithEmail: handleSignUpWithEmail,
+        signInWithEmail: handleSignInWithEmail,
+        signInWithPhone: handleSignInWithPhone,
+        verifyOtp: handleVerifyOtp,
+        signOut: handleSignOut,
+        resetPassword: handleResetPassword,
+        updatePassword: handleUpdatePassword,
+        uploadLicense: handleUploadLicense,
+        signUp: handleSignUp,
       }}
     >
       {children}
