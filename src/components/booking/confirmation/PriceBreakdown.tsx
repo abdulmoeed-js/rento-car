@@ -4,10 +4,11 @@ import { Separator } from "@/components/ui/separator";
 
 interface PriceBreakdownProps {
   totalDays: number;
+  pricePerDay: number;
   totalPrice: number;
 }
 
-export const PriceBreakdown: React.FC<PriceBreakdownProps> = ({ totalDays, totalPrice }) => {
+export const PriceBreakdown: React.FC<PriceBreakdownProps> = ({ totalDays, pricePerDay, totalPrice }) => {
   // Fixed values for confirmation screen
   const serviceFeesPercent = 10;
   const serviceFees = (totalPrice * serviceFeesPercent) / 100;
@@ -22,7 +23,7 @@ export const PriceBreakdown: React.FC<PriceBreakdownProps> = ({ totalDays, total
         
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span>${totalPrice / totalDays} × {totalDays} {totalDays === 1 ? 'day' : 'days'}</span>
+            <span>${pricePerDay} × {totalDays} {totalDays === 1 ? 'day' : 'days'}</span>
             <span>${totalPrice.toFixed(2)}</span>
           </div>
           

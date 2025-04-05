@@ -45,7 +45,7 @@ export function useBookingConfirmation(bookingData: BookingFormData) {
             phone: userPhone,
             email: userEmail,
           },
-          preferWhatsApp: bookingData.preferWhatsApp,
+          preferWhatsApp: bookingData.preferWhatsApp || false,
         },
       });
       

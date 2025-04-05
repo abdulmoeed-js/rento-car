@@ -18,7 +18,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ car, bookingData
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <img 
-            src={car.images && car.images.length > 0 ? car.images[0].image_path : 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=1000'} 
+            src={car.images && car.images.length > 0 ? car.images[0].image_path : car.image_url || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=1000'} 
             alt={`${car.brand} ${car.model}`} 
             className="w-20 h-20 object-cover rounded"
           />

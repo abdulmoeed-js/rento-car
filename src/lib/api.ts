@@ -1,191 +1,134 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { Car, CarFilters, BookingFormData } from "@/types/car";
-import { toast } from "sonner";
-import { logInfo, logError, LogType } from "@/utils/logger";
+import { Car, BookingFormData, CarFilters } from "@/types/car";
 
-export async function getCars(filters?: CarFilters) {
-  logInfo(LogType.CAR, "Fetching cars with filters", { filters });
-  try {
-    let query = supabase
-      .from('cars')
-      .select('*, car_images(*)');
+export const fetchCars = async (filters: CarFilters, page: number, pageSize: number): Promise<Car[]> => {
+  let query = supabase
+    .from('cars')
+    .select(`
+      *,
+      images (*),
+      bookings (*),
+      host_rating
+    `)
+    .order('created_at', { ascending: false });
 
-    // Apply filters if provided
-    if (filters) {
-      if (filters.minPrice !== undefined) {
-        query = query.gte('price_per_day', filters.minPrice);
-      }
-      if (filters.maxPrice !== undefined) {
-        query = query.lte('price_per_day', filters.maxPrice);
-      }
-      if (filters.transmission && filters.transmission !== 'all') {
-        query = query.eq('transmission', filters.transmission);
-      }
-      if (filters.carType && filters.carType !== 'all') {
-        query = query.eq('car_type', filters.carType);
-      }
-      if (filters.fuelType && filters.fuelType !== 'all') {
-        query = query.eq('fuel_type', filters.fuelType);
-      }
-    }
+  // Apply filters
+  if (filters.priceRange) {
+    query = query.gte('price_per_day', filters.priceRange[0]).lte('price_per_day', filters.priceRange[1]);
+  }
+  if (filters.carType && filters.carType.length > 0) {
+    query = query.in('car_type', filters.carType);
+  }
+  if (filters.fuelType && filters.fuelType.length > 0) {
+    query = query.in('fuel_type', filters.fuelType);
+  }
+  if (filters.transmission && filters.transmission.length > 0) {
+    query = query.in('transmission', filters.transmission);
+  }
+  if (filters.city && filters.city.length > 0) {
+    query = query.in('location', filters.city);
+  }
 
-    const { data, error } = await query;
+  // Apply sorting
+  if (filters.sortBy === 'price_asc') {
+    query = query.order('price_per_day', { ascending: true });
+  } else if (filters.sortBy === 'price_desc') {
+    query = query.order('price_per_day', { ascending: false });
+  } else if (filters.sortBy === 'newest') {
+    query = query.order('year', { ascending: false });
+  } else if (filters.sortBy === 'rating') {
+    query = query.order('host_rating', { ascending: false, nullsFirst: false });
+  }
 
-    if (error) {
-      throw error;
-    }
+  // Apply pagination
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize - 1;
 
-    // Format the data to match our Car type
-    const cars = data?.map((car: any) => {
-      return {
-        ...car,
-        images: car.car_images || []
-      } as Car;
-    }) || [];
+  query = query.range(startIndex, endIndex);
 
-    logInfo(LogType.CAR, `Successfully fetched ${cars.length} cars`);
-    return cars;
-  } catch (error) {
-    logError(LogType.CAR, "Error fetching cars", { error });
-    toast.error('Failed to fetch cars');
+  const { data, error } = await query;
+
+  if (error) {
     console.error('Error fetching cars:', error);
     return [];
   }
-}
 
-export async function getCarById(id: string) {
-  logInfo(LogType.CAR, "Fetching car by ID", { carId: id });
+  return data as Car[];
+};
+
+export const fetchCar = async (id: string): Promise<Car | null> => {
   try {
     const { data, error } = await supabase
       .from('cars')
-      .select('*, car_images(*), bookings(*)')
+      .select(`
+        *,
+        images (*),
+        bookings (*),
+        host_rating
+      `)
       .eq('id', id)
       .single();
 
-    if (error) {
-      throw error;
+    if (error) throw error;
+    
+    // Transform data to match Car interface
+    if (data) {
+      const car: Car = {
+        id: data.id,
+        brand: data.brand,
+        model: data.model,
+        year: data.year,
+        location: data.location,
+        price_per_day: data.price_per_day,
+        availability: data.availability,
+        car_type: data.car_type,
+        fuel_type: data.fuel_type,
+        transmission: data.transmission,
+        image_url: data.image_url,
+        host_id: data.host_id,
+        trust_rating: data.trust_rating,
+        description: data.description,
+        images: data.images,
+        host_rating: data.host_rating,
+        bookings: data.bookings
+      };
+      return car;
     }
-
-    // Calculate host rating
-    const { data: ratingData } = await supabase
-      .from('host_ratings')
-      .select('rating')
-      .eq('host_id', data?.host_id);
-
-    const hostRating = ratingData && ratingData.length > 0
-      ? ratingData.reduce((sum: number, item: any) => sum + item.rating, 0) / ratingData.length
-      : 0;
-
-    // Format the car data
-    const car = data ? {
-      ...data,
-      images: data.car_images || [],
-      host_rating: hostRating,
-    } as Car : null;
-
-    logInfo(LogType.CAR, car ? "Car fetched successfully" : "Car not found", { carId: id });
-    return car;
+    
+    return null;
   } catch (error) {
-    logError(LogType.CAR, "Error fetching car details", { carId: id, error });
-    toast.error('Failed to fetch car details');
-    console.error('Error fetching car details:', error);
+    console.error('Error fetching car:', error);
     return null;
   }
-}
+};
 
-// Check if a date range overlaps with existing bookings
-export function isDateRangeAvailable(startDate: Date, endDate: Date, bookings: any[]) {
-  logInfo(LogType.BOOKING, "Checking date range availability", { 
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-    bookingsCount: bookings.length
-  });
-  
-  return !bookings.some(booking => {
-    if (booking.status === 'cancelled') return false;
-    
-    const bookingStart = new Date(booking.start_date);
-    const bookingEnd = new Date(booking.end_date);
-    
-    return (
-      (startDate <= bookingEnd && startDate >= bookingStart) ||
-      (endDate <= bookingEnd && endDate >= bookingStart) ||
-      (startDate <= bookingStart && endDate >= bookingEnd)
-    );
-  });
-}
-
-// Get availability for a specific month
-export function getMonthlyAvailability(year: number, month: number, bookings: any[]) {
-  logInfo(LogType.BOOKING, "Getting monthly availability", { year, month, bookingsCount: bookings.length });
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const availability = [];
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const isAvailable = isDateRangeAvailable(date, date, bookings);
-    availability.push({
-      date,
-      isAvailable
-    });
-  }
-
-  return availability;
-}
-
-// Submit booking request to Supabase
-export async function submitBooking(bookingData: BookingFormData) {
-  logInfo(LogType.BOOKING, "Submitting booking", { 
-    carId: bookingData.car.id,
-    startDate: bookingData.startDate.toISOString(),
-    endDate: bookingData.endDate.toISOString()
-  });
-  
+export const submitBooking = async (bookingData: BookingFormData): Promise<{ id: string } | null> => {
   try {
-    const { car, startDate, endDate, message, preferWhatsApp } = bookingData;
+    const { car, startDate, endDate, pickupTime, returnTime, location, message, totalPrice, preferWhatsApp } = bookingData;
     
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      logError(LogType.BOOKING, "Booking submission failed - user not logged in");
-      toast.error('You must be logged in to book a car');
-      return null;
-    }
-    
-    // Format dates for database
-    const formattedStartDate = startDate.toISOString().split('T')[0];
-    const formattedEndDate = endDate.toISOString().split('T')[0];
-    
-    // Insert booking record
+    // Create booking record
     const { data, error } = await supabase
       .from('bookings')
       .insert({
         car_id: car.id,
-        user_id: user.id,
-        start_date: formattedStartDate,
-        end_date: formattedEndDate,
-        status: 'pending',
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        pickup_time: pickupTime,
+        return_time: returnTime,
+        location: location,
         message: message,
-        whatsapp_notifications: preferWhatsApp || false,
-        // You could also store additional metadata like message, pickup location, etc.
-        // in another related table if needed
+        total_price: totalPrice,
+        status: 'pending',
+        preferWhatsApp: preferWhatsApp || false,
       })
-      .select()
+      .select('id')
       .single();
     
-    if (error) {
-      logError(LogType.BOOKING, "Error creating booking in database", { error });
-      console.error('Error creating booking:', error);
-      throw error;
-    }
+    if (error) throw error;
     
-    logInfo(LogType.BOOKING, "Booking submitted successfully", { bookingId: data.id });
     return data;
   } catch (error) {
-    logError(LogType.BOOKING, "Error submitting booking", { error });
     console.error('Error submitting booking:', error);
     return null;
   }
-}
+};

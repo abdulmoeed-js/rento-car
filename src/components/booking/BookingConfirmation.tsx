@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { BookingFormData } from "@/types/car";
-import PriceBreakdown from "./confirmation/PriceBreakdown";
-import BookingDetails from "./confirmation/BookingDetails";
-import SuccessMessage from "./confirmation/SuccessMessage";
-import CancellationPolicy from "./confirmation/CancellationPolicy";
+import { PriceBreakdown } from "./confirmation/PriceBreakdown";
+import { BookingDetails } from "./confirmation/BookingDetails";
+import { SuccessMessage } from "./confirmation/SuccessMessage";
+import { CancellationPolicy } from "./confirmation/CancellationPolicy";
 
 export type NotificationStatus = "sent" | "failed" | "pending" | null;
 
@@ -60,7 +60,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     totalDays,
     totalPrice,
     message: message || '',
-    status: 'confirmed' // Set default status for BookingFormData
+    status: 'confirmed', // Set default status for BookingFormData
+    preferWhatsApp: false // Default value for preferWhatsApp
   };
 
   return (
@@ -71,11 +72,15 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {isBooked && <SuccessMessage />}
+        {isBooked && <SuccessMessage 
+          notificationStatus={{ success: notificationStatus === "sent", method: "whatsapp" }}
+          onResendNotification={handleResendNotification}
+          onClose={() => {}}
+        />}
         
-        <BookingDetails booking={bookingData} />
+        <BookingDetails car={car} bookingData={bookingData} />
         
-        <PriceBreakdown totalDays={totalDays} pricePerDay={car.price_per_day} />
+        <PriceBreakdown totalDays={totalDays} pricePerDay={car.price_per_day} totalPrice={totalPrice} />
         
         <CancellationPolicy />
         

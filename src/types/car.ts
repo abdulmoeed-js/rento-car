@@ -1,3 +1,4 @@
+
 export interface Car {
   id: string;
   brand: string;
@@ -13,6 +14,32 @@ export interface Car {
   host_id: string;
   trust_rating: number;
   description: string;
+  // Added properties that are being used throughout the application
+  images?: {
+    id: string;
+    car_id: string;
+    image_path: string;
+    is_primary: boolean;
+    created_at: string;
+  }[];
+  host_rating?: number;
+  bookings?: Booking[];
+}
+
+export interface Booking {
+  id: string;
+  car_id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  pickup_time?: string;
+  return_time?: string;
+  location?: string;
+  message?: string;
+  total_price?: number;
 }
 
 export interface BookingFormData {
@@ -26,4 +53,14 @@ export interface BookingFormData {
   totalDays: number;
   totalPrice: number;
   status: string;
+  preferWhatsApp?: boolean; // Added preferWhatsApp property
+}
+
+export interface CarFilters {
+  priceRange: [number, number];
+  carType: string[];
+  fuelType: string[];
+  transmission: string[];
+  city: string[];
+  sortBy: 'price_asc' | 'price_desc' | 'newest' | 'rating';
 }
