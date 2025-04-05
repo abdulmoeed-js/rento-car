@@ -11,6 +11,24 @@ import { toast } from "sonner";
 import { logInfo, logError, LogType } from "@/utils/logger";
 import { Booking, Car, Profile } from "@/types/car";
 
+// Define TypeScript type for the raw database response
+interface BookingResponse {
+  id: string;
+  car_id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  cars: Car | null;
+  profiles: {
+    full_name: string | null;
+    phone_number: string | null;
+  } | null;
+  flagged?: boolean;
+}
+
 export const BookingsTab: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,17 +79,21 @@ export const BookingsTab: React.FC = () => {
         setLocations(uniqueLocations as string[]);
         
         // Transform the data to match our Booking type
-        const transformedBookings = data.map((booking: any) => ({
+        const transformedBookings = (data as BookingResponse[]).map(booking => ({
           id: booking.id,
           car_id: booking.car_id,
           user_id: booking.user_id,
           start_date: booking.start_date,
           end_date: booking.end_date,
-          status: booking.status,
+          status: booking.status as Booking['status'],
           created_at: booking.created_at,
           updated_at: booking.updated_at,
-          cars: booking.cars,
-          profiles: booking.profiles || { full_name: 'Unknown User', phone_number: null }
+          cars: booking.cars || undefined,
+          profiles: booking.profiles ? {
+            id: booking.user_id,
+            full_name: booking.profiles.full_name,
+            phone_number: booking.profiles.phone_number
+          } : undefined
         }));
         
         setBookings(transformedBookings);
