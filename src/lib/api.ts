@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Car, BookingFormData, CarFilters, Booking } from "@/types/car";
 
@@ -115,7 +116,7 @@ export const submitBooking = async (bookingData: BookingFormData): Promise<{ id:
   }
 };
 
-// Helper function to calculate monthly availability
+// Helper function to calculate monthly availability (local JavaScript implementation)
 export const getMonthlyAvailability = (
   year: number, 
   month: number, 
@@ -134,9 +135,8 @@ export const getMonthlyAvailability = (
       const endDate = new Date(booking.end_date);
       
       return (
-        booking.status === 'confirmed' || booking.status === 'pending'
-      ) && (
-        date >= startDate && date <= endDate
+        (booking.status === 'confirmed' || booking.status === 'pending') && 
+        (date >= startDate && date <= endDate)
       );
     });
     
