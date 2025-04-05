@@ -123,7 +123,7 @@ export function getMonthlyAvailability(year: number, month: number, bookings: an
 // Submit booking request to Supabase
 export async function submitBooking(bookingData: BookingFormData) {
   try {
-    const { car, startDate, endDate, message } = bookingData;
+    const { car, startDate, endDate, message, preferWhatsApp } = bookingData;
     
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -146,6 +146,8 @@ export async function submitBooking(bookingData: BookingFormData) {
         start_date: formattedStartDate,
         end_date: formattedEndDate,
         status: 'pending',
+        message: message,
+        whatsapp_notifications: preferWhatsApp || false,
         // You could also store additional metadata like message, pickup location, etc.
         // in another related table if needed
       })

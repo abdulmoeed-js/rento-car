@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { BookingFormData } from "@/types/car";
 import { isDateRangeAvailable } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import BookingConfirmation from "./BookingConfirmation";
 
 interface BookingFormProps {
@@ -31,6 +32,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ car }) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [bookingData, setBookingData] = useState<BookingFormData | null>(null);
   const [disabledDates, setDisabledDates] = useState<Date[]>([]);
+  const [preferWhatsApp, setPreferWhatsApp] = useState(true);
 
   // Calculate the total days and price
   const totalDays = startDate && endDate 
@@ -51,6 +53,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ car }) => {
       totalDays,
       totalPrice,
       status: 'pending',
+      preferWhatsApp,
     };
   };
 
@@ -230,6 +233,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ car }) => {
             placeholder="Any special requests or information for the host..."
             rows={3}
           />
+        </div>
+
+        <div className="flex items-center space-x-2 pt-2">
+          <Switch 
+            id="whatsapp-preference" 
+            checked={preferWhatsApp} 
+            onCheckedChange={setPreferWhatsApp} 
+          />
+          <Label htmlFor="whatsapp-preference">Send booking notifications via WhatsApp</Label>
         </div>
 
         <div className="pt-4 border-t border-gray-100">

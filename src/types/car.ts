@@ -66,4 +66,5 @@ export interface BookingFormData {
   totalDays: number;
   totalPrice: number;
   status: 'pending';
+  preferWhatsApp?: boolean;
 }
