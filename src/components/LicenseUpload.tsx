@@ -18,7 +18,7 @@ const LicenseUpload: React.FC = () => {
     if (user) {
       trackUserActivity(ActivityType.LICENSE_UPDATED, {
         action: "view_license_page",
-        current_status: user.licenseStatus,
+        current_status: user.license_status,
       });
     }
   }, [user]);
@@ -71,7 +71,7 @@ const LicenseUpload: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  if (user?.licenseStatus === 'pending_verification') {
+  if (user?.license_status === 'pending_verification') {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
@@ -92,7 +92,7 @@ const LicenseUpload: React.FC = () => {
     );
   }
 
-  if (user?.licenseStatus === 'verified') {
+  if (user?.license_status === 'verified') {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
@@ -110,7 +110,7 @@ const LicenseUpload: React.FC = () => {
     );
   }
 
-  if (user?.licenseStatus === 'rejected') {
+  if (user?.license_status === 'rejected') {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
@@ -129,7 +129,7 @@ const LicenseUpload: React.FC = () => {
   }
 
   // Using String() to ensure proper type comparison
-  if (String(user?.licenseStatus) === 'pending_reupload') {
+  if (String(user?.license_status) === 'pending_reupload') {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>

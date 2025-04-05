@@ -16,7 +16,7 @@ const Index = () => {
 
   // Helper function to get status details
   const getStatusDetails = () => {
-    switch (user.licenseStatus) {
+    switch (user.license_status) {
       case 'verified':
         return {
           icon: <BadgeCheck className="h-5 w-5" />,
@@ -82,7 +82,7 @@ const Index = () => {
               </span>
               
               {/* KYC Status Badge */}
-              {user.licenseStatus === 'pending_verification' && (
+              {user.license_status === 'pending_verification' && (
                 <Badge variant="outline" className="ml-1 bg-amber-100 text-amber-800 border-amber-200">
                   <Clock className="h-3 w-3 mr-1" /> KYC Pending
                 </Badge>
@@ -104,7 +104,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto p-4 mt-8">
         <h1 className="text-2xl font-bold text-rento-dark mb-4">
-          Welcome to Rento {user.userRole === 'host' ? 'Host Dashboard' : ''}
+          Welcome to Rento {user.user_role === 'host' ? 'Host Dashboard' : ''}
         </h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -117,7 +117,7 @@ const Index = () => {
               <div>
                 <p className="font-medium flex items-center">
                   {statusDetails.label}
-                  {user.licenseStatus === 'pending_verification' && (
+                  {user.license_status === 'pending_verification' && (
                     <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">
                       <Clock className="h-3 w-3 mr-1" /> Pending
                     </Badge>
@@ -129,7 +129,7 @@ const Index = () => {
               </div>
             </div>
             
-            {(user.licenseStatus === 'not_uploaded' || user.licenseStatus === 'pending_reupload') && (
+            {(user.license_status === 'not_uploaded' || user.license_status === 'pending_reupload') && (
               <Button className="w-full mt-4" asChild>
                 <Link to="/upload-license">
                   <Upload className="mr-2 h-4 w-4" />
@@ -141,20 +141,20 @@ const Index = () => {
           
           <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-2">
-              {user.userRole === 'host' ? 'Manage Your Listings' : 'Find a Car'}
+              {user.user_role === 'host' ? 'Manage Your Listings' : 'Find a Car'}
             </h2>
             <p className="text-muted-foreground mb-4">
-              {user.userRole === 'host' 
+              {user.user_role === 'host' 
                 ? 'List your car and start earning money today.'
                 : 'Ready to hit the road? Browse our selection of cars available for rent.'}
             </p>
             <Button asChild className="w-full sm:w-auto" size="lg">
-              <Link to={user.userRole === 'host' ? "/host/listings" : "/cars"} className="flex items-center">
-                {user.userRole === 'host' 
+              <Link to={user.user_role === 'host' ? "/host/listings" : "/cars"} className="flex items-center">
+                {user.user_role === 'host' 
                   ? <CarFront className="mr-2 h-5 w-5" />
                   : <Search className="mr-2 h-5 w-5" />
                 }
-                {user.userRole === 'host' ? 'Manage Listings' : 'Browse Cars'}
+                {user.user_role === 'host' ? 'Manage Listings' : 'Browse Cars'}
               </Link>
             </Button>
           </div>

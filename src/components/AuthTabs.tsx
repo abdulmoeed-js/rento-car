@@ -18,7 +18,7 @@ const AuthTabs: React.FC = () => {
 
   // If authenticated, redirect to appropriate page based on license status
   if (user) {
-    if (user.licenseStatus === 'not_uploaded' || user.licenseStatus === 'pending_verification') {
+    if (user.license_status === 'not_uploaded' || user.license_status === 'pending_verification') {
       return <LicenseUpload />;
     } else {
       // If license is verified, navigate to car listing
