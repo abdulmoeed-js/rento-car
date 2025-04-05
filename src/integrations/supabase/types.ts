@@ -160,15 +160,108 @@ export type Database = {
         }
         Relationships: []
       }
+      kyc_review_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_status: string
+          previous_status: string
+          reason: string | null
+          reviewer_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_status: string
+          previous_status: string
+          reason?: string | null
+          reviewer_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          previous_status?: string
+          reason?: string | null
+          reviewer_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          full_name: string | null
+          id: string
+          license_image_url: string | null
+          license_status: string | null
+          license_uploaded_at: string | null
+          phone_number: string | null
+        }
+        Insert: {
+          full_name?: string | null
+          id: string
+          license_image_url?: string | null
+          license_status?: string | null
+          license_uploaded_at?: string | null
+          phone_number?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          id?: string
+          license_image_url?: string | null
+          license_status?: string | null
+          license_uploaded_at?: string | null
+          phone_number?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
+      make_admin: {
+        Args: {
+          _email: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
