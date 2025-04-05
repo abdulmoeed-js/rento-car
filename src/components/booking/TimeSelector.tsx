@@ -1,44 +1,43 @@
 
 import React from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TimeSelectorProps {
-  pickupTime: string;
-  returnTime: string;
-  onPickupTimeChange: (value: string) => void;
-  onReturnTimeChange: (value: string) => void;
+  time: string;
+  onChange: (time: string) => void;
+  id?: string;
 }
 
-const TimeSelector: React.FC<TimeSelectorProps> = ({
-  pickupTime,
-  returnTime,
-  onPickupTimeChange,
-  onReturnTimeChange,
-}) => {
+const TimeSelector: React.FC<TimeSelectorProps> = ({ time, onChange, id }) => {
+  // Generate time options in 30-minute intervals
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const hourStr = hour.toString().padStart(2, '0');
+        const minuteStr = minute.toString().padStart(2, '0');
+        const timeStr = `${hourStr}:${minuteStr}`;
+        options.push(timeStr);
+      }
+    }
+    return options;
+  };
+
+  const timeOptions = generateTimeOptions();
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="pickup-time">Pickup Time</Label>
-        <Input
-          id="pickup-time"
-          type="time"
-          value={pickupTime}
-          onChange={(e) => onPickupTimeChange(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="return-time">Return Time</Label>
-        <Input
-          id="return-time"
-          type="time"
-          value={returnTime}
-          onChange={(e) => onReturnTimeChange(e.target.value)}
-          required
-        />
-      </div>
-    </div>
+    <Select value={time} onValueChange={onChange}>
+      <SelectTrigger id={id}>
+        <SelectValue placeholder="Select time" />
+      </SelectTrigger>
+      <SelectContent>
+        {timeOptions.map((timeOption) => (
+          <SelectItem key={timeOption} value={timeOption}>
+            {timeOption}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };
 
