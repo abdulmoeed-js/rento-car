@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { Mail, Smartphone, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface LoginFormProps {
   onPhoneSubmit: () => void;
@@ -29,10 +30,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
     // Clear previous errors
     setEmailError(null);
     
+    if (!email || !password) {
+      setEmailError("Please fill in all required fields");
+      return;
+    }
+    
     try {
       const { error } = await signInWithEmail(email, password);
       if (error) {
         setEmailError(error);
+      } else {
+        toast.success("Logged in successfully");
       }
     } catch (error: any) {
       setEmailError(error.message || "Failed to login. Please try again.");
@@ -44,6 +52,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onPhoneSubmit, onForgotPassword }
     e.preventDefault();
     // Clear previous errors
     setPhoneError(null);
+    
+    if (!phone) {
+      setPhoneError("Please enter your phone number");
+      return;
+    }
     
     try {
       const { error } = await signInWithPhone(phone);

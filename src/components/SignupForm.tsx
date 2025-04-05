@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Mail, Smartphone, Eye, EyeOff, Car, Home, AlertCircle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface SignupFormProps {
   onPhoneSubmit: () => void;
@@ -30,8 +31,18 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
     // Clear previous errors
     setEmailError(null);
     
+    if (!email || !password) {
+      setEmailError("Please fill in all required fields");
+      return;
+    }
+    
     try {
-      await signUp(email, password, undefined, userRole);
+      const { error } = await signUp(email, password, undefined, userRole);
+      if (error) {
+        setEmailError(error);
+      } else {
+        toast.success("Account created successfully! Please log in.");
+      }
     } catch (error: any) {
       setEmailError(error.message || "Failed to create account. Please try again.");
       console.error("Signup error:", error);
@@ -42,6 +53,11 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
     e.preventDefault();
     // Clear previous errors
     setPhoneError(null);
+    
+    if (!phone) {
+      setPhoneError("Please enter your phone number");
+      return;
+    }
     
     try {
       const { error } = await signInWithPhone(phone, userRole);

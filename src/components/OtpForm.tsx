@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface OtpFormProps {
   onBack: () => void;
@@ -13,6 +15,7 @@ interface OtpFormProps {
 const OtpForm: React.FC<OtpFormProps> = ({ onBack }) => {
   const { verifyOtp, isLoading } = useAuth();
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+  const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [timer, setTimer] = useState(30);
   
@@ -70,18 +73,31 @@ const OtpForm: React.FC<OtpFormProps> = ({ onBack }) => {
   };
 
   const handleVerify = async () => {
+    // Clear any previous errors
+    setError(null);
+    
     const otpString = otp.join("");
-    if (otpString.length === 6) {
-      try {
-        await verifyOtp(otpString);
-      } catch (error) {
-        console.error("OTP verification error:", error);
+    if (otpString.length !== 6) {
+      setError("Please enter all 6 digits of the OTP");
+      return;
+    }
+    
+    try {
+      const { error } = await verifyOtp(otpString);
+      if (error) {
+        setError(error);
+      } else {
+        toast.success("Verification successful");
       }
+    } catch (error: any) {
+      setError(error.message || "OTP verification failed. Please try again.");
+      console.error("OTP verification error:", error);
     }
   };
 
   const resendOtp = () => {
     setTimer(30);
+    toast.info("OTP resent to your phone number");
     // In a real app, this would call an API to resend the OTP
   };
 
@@ -106,6 +122,13 @@ const OtpForm: React.FC<OtpFormProps> = ({ onBack }) => {
         </div>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
         <div className="flex justify-center gap-2 mb-6">
           {otp.map((digit, index) => (
             <Input

@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -25,7 +26,7 @@ interface AuthContextProps {
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
   uploadLicense: (imageData: string) => Promise<void>;
-  signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<void>;
+  signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
 }
 
 interface AuthProviderProps {
@@ -45,7 +46,7 @@ const AuthContext = createContext<AuthContextProps>({
   resetPassword: async () => ({ error: 'Not implemented' }),
   updatePassword: async () => ({ error: 'Not implemented' }),
   uploadLicense: async () => { },
-  signUp: async () => { },
+  signUp: async () => ({ error: null }),
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -77,16 +78,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Helper function to create user profile
+  const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter') => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          user_role: userRole,
+          license_status: 'not_uploaded'
+        });
+      
+      if (error) {
+        console.error('Error creating profile:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error in createUserProfile function:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      handleUserChange(session?.user || null);
+      if (session) {
+        handleUserChange(session.user);
+      } else {
+        setIsLoading(false);
+      }
     };
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleUserChange(session?.user || null);
+      if (session) {
+        handleUserChange(session.user);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
     });
 
     return () => {
@@ -117,14 +150,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
       } else {
         // If profile doesn't exist, create it
-        const { error } = await supabase.from('profiles').insert({
-          id: authUser.id,
-          user_role: 'renter',
-        });
+        const userRole = authUser.user_metadata?.user_role || 'renter';
+        const created = await createUserProfile(authUser.id, userRole);
         
-        if (error) {
-          console.error('Error creating profile:', error);
-        } else {
+        if (created) {
           // Retry getting profile
           const newProfile = await getUserProfile(authUser.id);
           if (newProfile) {
@@ -172,9 +201,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Alias for signUpWithEmail for compatibility
   async function signUp(email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') {
-    const result = await signUpWithEmail(email, password, '', userRole);
-    if (result.error) {
-      throw new Error(result.error);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            user_role: userRole
+          }
+        }
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      // Create profile if signup successful
+      if (data && data.user) {
+        await createUserProfile(data.user.id, userRole);
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message };
     }
   }
 
@@ -190,25 +239,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const profile = await getUserProfile(data.user.id);
       
-      if (profile) {
-        const userData: User = {
-          id: data.user.id,
-          email: data.user.email || '',
-          phone: data.user.phone || '',
-          full_name: profile.full_name || '',
-          license_status: profile.license_status || 'not_uploaded',
-          user_role: profile.user_role || 'renter',
-        };
-        
-        setUser(userData);
-        trackUserActivity(ActivityType.LOGIN, {
-          method: 'email',
-          user_role: userData.user_role,
-        });
-        
-        return { error: null };
+      if (!profile) {
+        // If profile doesn't exist, create it
+        const userRole = data.user.user_metadata?.user_role || 'renter';
+        await createUserProfile(data.user.id, userRole);
       }
-      return { error: 'Profile not found' };
+      
+      trackUserActivity(ActivityType.LOGIN, {
+        method: 'email',
+        user_role: profile?.user_role || 'renter',
+      });
+      
+      return { error: null };
     } catch (error: any) {
       trackUserActivity(ActivityType.LOGIN, {
         method: 'email',
@@ -257,19 +299,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) throw error;
 
+      // Check if user profile exists
       const profile = await getUserProfile(data.user.id);
 
-      if (profile) {
-        const userData: User = {
-          id: data.user.id,
-          email: data.user.email || '',
-          phone: data.user.phone || '',
-          full_name: profile.full_name || '',
-          license_status: profile.license_status || 'not_uploaded',
-          user_role: profile.user_role || 'renter',
-        };
-        setUser(userData);
+      if (!profile) {
+        // If profile doesn't exist, create it
+        const userRole = data.user.user_metadata?.user_role || 'renter';
+        await createUserProfile(data.user.id, userRole);
       }
+      
       return { error: null };
     } catch (error: any) {
       toast.error(error.message);
