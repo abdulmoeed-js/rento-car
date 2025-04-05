@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { Car, CarFilters } from "@/types/car";
+import { Car, CarFilters, BookingFormData } from "@/types/car";
 import { toast } from "sonner";
 
 export async function getCars(filters?: CarFilters) {
@@ -117,4 +118,48 @@ export function getMonthlyAvailability(year: number, month: number, bookings: an
   }
 
   return availability;
+}
+
+// Submit booking request to Supabase
+export async function submitBooking(bookingData: BookingFormData) {
+  try {
+    const { car, startDate, endDate, message } = bookingData;
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error('You must be logged in to book a car');
+      return null;
+    }
+    
+    // Format dates for database
+    const formattedStartDate = startDate.toISOString().split('T')[0];
+    const formattedEndDate = endDate.toISOString().split('T')[0];
+    
+    // Insert booking record
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        car_id: car.id,
+        user_id: user.id,
+        start_date: formattedStartDate,
+        end_date: formattedEndDate,
+        status: 'pending',
+        // You could also store additional metadata like message, pickup location, etc.
+        // in another related table if needed
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating booking:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error submitting booking:', error);
+    return null;
+  }
 }

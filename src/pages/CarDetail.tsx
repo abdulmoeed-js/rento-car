@@ -9,6 +9,7 @@ import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import { CarFront, User, LogOut, Calendar, MapPin, Fuel, Gauge, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import BookingForm from "@/components/BookingForm";
 
 const CarDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,16 +33,6 @@ const CarDetail = () => {
   const nextMonthAvailability = car?.bookings
     ? getMonthlyAvailability(nextMonth.getFullYear(), nextMonth.getMonth(), car.bookings)
     : [];
-
-  const handleBookNow = () => {
-    if (!user) {
-      toast.error("Please sign in to book a car");
-      navigate("/auth");
-      return;
-    }
-    
-    toast.success("Booking functionality will be implemented in the next phase!");
-  };
 
   const handlePrevImage = () => {
     if (!car?.images?.length) return;
@@ -240,7 +231,7 @@ const CarDetail = () => {
           
           {/* Right Column: Booking Panel and Availability */}
           <div>
-            {/* Booking Panel */}
+            {/* Booking Form */}
             <Card className="mb-6">
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -250,17 +241,7 @@ const CarDetail = () => {
                   </div>
                 </div>
                 
-                <Button 
-                  className="w-full mb-4" 
-                  size="lg"
-                  onClick={handleBookNow}
-                >
-                  Book Now
-                </Button>
-                
-                <p className="text-xs text-center text-muted-foreground">
-                  You won't be charged yet
-                </p>
+                <BookingForm car={car} />
               </CardContent>
             </Card>
             

@@ -1,3 +1,4 @@
+
 export interface Car {
   id: string;
   host_id: string;
@@ -52,4 +53,17 @@ export interface CarFilters {
   transmission?: 'automatic' | 'manual' | 'all';
   carType?: string;
   fuelType?: string;
+}
+
+export interface BookingFormData {
+  car: Car;
+  startDate: Date;
+  endDate: Date;
+  pickupTime: string;
+  returnTime: string;
+  location: string;
+  message?: string;
+  totalDays: number;
+  totalPrice: number;
+  status: 'pending';
 }
