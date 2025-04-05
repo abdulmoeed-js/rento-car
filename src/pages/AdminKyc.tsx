@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { Shield, Check, X, UploadCloud, Clock, RefreshCw } from "lucide-react";
+import { Shield, Check, X, UploadCloud, Clock, RefreshCw, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -45,17 +46,25 @@ const AdminKyc = () => {
   const [actionReason, setActionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   // Fetch users with pending license verification
   const { data: users = [], isLoading, refetch } = useQuery({
-    queryKey: ["kyc-users"],
+    queryKey: ["kyc-users", showOnlyPending],
     queryFn: async () => {
       // We need to cast the entire query to any due to missing type definitions
-      const { data: profiles, error } = await (supabase as any)
+      let query = (supabase as any)
         .from("profiles")
         .select("*, users:auth.users(email, created_at)")
-        .order("license_uploaded_at", { ascending: true })
-        .not("license_status", "eq", "verified");
+        .order("license_uploaded_at", { ascending: true });
+      
+      if (showOnlyPending) {
+        query = query.eq("license_status", "pending_verification");
+      } else {
+        query = query.not("license_status", "eq", "verified");
+      }
+
+      const { data: profiles, error } = await query;
 
       if (error) throw error;
 
@@ -180,6 +189,83 @@ const AdminKyc = () => {
     }
   };
 
+  const bulkApproveOldestPending = async () => {
+    // Filter for users with pending_verification status
+    const pendingUsers = users.filter(user => 
+      user.licenseStatus === 'pending_verification' && user.licenseUploadedAt
+    );
+    
+    if (pendingUsers.length === 0) {
+      toast({
+        title: "No action needed",
+        description: "There are no pending verifications to process.",
+      });
+      return;
+    }
+    
+    // Sort by upload date (oldest first)
+    pendingUsers.sort((a, b) => {
+      if (!a.licenseUploadedAt || !b.licenseUploadedAt) return 0;
+      return new Date(a.licenseUploadedAt).getTime() - new Date(b.licenseUploadedAt).getTime();
+    });
+    
+    // Get the oldest 5 or fewer
+    const usersToProcess = pendingUsers.slice(0, 5);
+    
+    setIsSubmitting(true);
+    
+    try {
+      let successCount = 0;
+      
+      for (const user of usersToProcess) {
+        // Update the user's license status
+        const { error: updateError } = await (supabase as any)
+          .from("profiles")
+          .update({ license_status: "verified" })
+          .eq("id", user.id);
+          
+        if (updateError) {
+          console.error(`Error updating user ${user.id}:`, updateError);
+          continue;
+        }
+        
+        // Log the KYC review action
+        const { error: logError } = await (supabase as any)
+          .from("kyc_review_logs")
+          .insert({
+            user_id: user.id,
+            reviewer_id: currentUser?.id,
+            action: "approve",
+            reason: "Automatically approved by system",
+            previous_status: user.licenseStatus,
+            new_status: "verified"
+          });
+          
+        if (logError) {
+          console.error(`Error logging approval for user ${user.id}:`, logError);
+        }
+        
+        successCount++;
+      }
+      
+      toast({
+        title: "Bulk processing complete",
+        description: `Successfully approved ${successCount} out of ${usersToProcess.length} pending verifications.`,
+      });
+      
+      refetch();
+    } catch (error) {
+      console.error('Error performing bulk approval:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete bulk approval. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending_verification':
@@ -202,14 +288,39 @@ const AdminKyc = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6" /> License Verification
           </h1>
-          <Button 
-            onClick={handlePushPendingVerifications} 
-            disabled={isPushing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isPushing ? "animate-spin" : ""}`} />
-            Process Pending Uploads
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2 mr-4">
+              <Checkbox 
+                id="pending-only" 
+                checked={showOnlyPending} 
+                onCheckedChange={() => setShowOnlyPending(!showOnlyPending)}
+              />
+              <label 
+                htmlFor="pending-only" 
+                className="text-sm font-medium leading-none cursor-pointer flex items-center gap-1"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Pending only
+              </label>
+            </div>
+            <Button 
+              onClick={bulkApproveOldestPending} 
+              disabled={isSubmitting}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Check className="h-4 w-4" />
+              Process Oldest Pending
+            </Button>
+            <Button 
+              onClick={handlePushPendingVerifications} 
+              disabled={isPushing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isPushing ? "animate-spin" : ""}`} />
+              Find New Uploads
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

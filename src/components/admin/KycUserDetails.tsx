@@ -2,8 +2,9 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { Check, X, UploadCloud } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { Check, X, UploadCloud, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type KycUser = {
   id: string;
@@ -31,6 +32,18 @@ export const KycUserDetails: React.FC<KycUserDetailsProps> = ({
   onReject,
   onRequestReupload
 }) => {
+  // Calculate how long the license has been pending
+  const getPendingTime = () => {
+    if (user.licenseStatus !== "pending_verification" || !user.licenseUploadedAt) {
+      return null;
+    }
+    
+    const uploadDate = new Date(user.licenseUploadedAt);
+    return formatDistanceToNow(uploadDate, { addSuffix: true });
+  };
+  
+  const pendingTime = getPendingTime();
+  
   return (
     <Dialog open={!!user} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -60,7 +73,14 @@ export const KycUserDetails: React.FC<KycUserDetailsProps> = ({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-gray-500">License Status:</span>
-                <span className="col-span-2 capitalize">{user.licenseStatus.replace(/_/g, " ")}</span>
+                <span className="col-span-2 capitalize">
+                  {user.licenseStatus.replace(/_/g, " ")}
+                  {user.licenseStatus === "pending_verification" && (
+                    <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">
+                      <Clock className="h-3 w-3 mr-1" /> Waiting {pendingTime}
+                    </Badge>
+                  )}
+                </span>
               </div>
               {user.licenseUploadedAt && (
                 <div className="grid grid-cols-3 gap-2">
