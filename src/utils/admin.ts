@@ -72,3 +72,47 @@ export async function getKycLogs(limit = 100) {
     return [];
   }
 }
+
+export async function pushPendingVerifications() {
+  try {
+    // Find all records that need to be pushed to admin review
+    const { data: profiles, error } = await (supabase as any)
+      .from('profiles')
+      .select('id, license_status, license_uploaded_at')
+      .in('license_status', ['not_submitted', null])
+      .is('license_image_url', 'not.null'); // Only include records with an image
+    
+    if (error) throw error;
+    
+    if (!profiles || profiles.length === 0) {
+      console.log('No pending verifications to push');
+      return { success: true, count: 0 };
+    }
+    
+    // Update all records to pending_verification status
+    const updates = profiles.map((profile: any) => ({
+      id: profile.id,
+      license_status: 'pending_verification',
+      license_uploaded_at: profile.license_uploaded_at || new Date().toISOString()
+    }));
+    
+    const { error: updateError, count } = await (supabase as any)
+      .from('profiles')
+      .upsert(updates)
+      .select();
+    
+    if (updateError) throw updateError;
+    
+    return { 
+      success: true, 
+      count: updates.length,
+      message: `Successfully pushed ${updates.length} records to pending verification`
+    };
+  } catch (error) {
+    console.error('Error pushing pending verifications:', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+}
