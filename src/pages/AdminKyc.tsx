@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { KycUserDetails } from "@/components/admin/KycUserDetails";
 import { KycActionDialog } from "@/components/admin/KycActionDialog";
 import { useAuth } from "@/context/AuthContext";
-import { pushPendingVerifications, approveAllPendingVerifications, bulkApproveOldestPending } from "@/utils/admin";
+import { pushPendingVerifications, approveAllPendingVerifications } from "@/utils/admin";
 
 type KycUser = {
   id: string;
