@@ -14,6 +14,12 @@ interface BookingResponseItem {
   status: string;
   created_at: string;
   updated_at: string;
+  pickup_time?: string;
+  return_time?: string;
+  location?: string;
+  message?: string;
+  total_price?: number;
+  prefer_whatsapp?: boolean;
   cars?: {
     id: string;
     brand: string;
@@ -27,7 +33,7 @@ interface BookingResponseItem {
     full_name: string | null;
     phone_number: string | null;
     license_status?: string | null;
-    [key: string]: any;
+    user_role?: string | null;
   } | null;
 }
 
@@ -76,26 +82,31 @@ export async function fetchBookings(
           full_name: item.profiles.full_name,
           phone_number: item.profiles.phone_number,
           license_status: item.profiles.license_status,
+          user_role: item.profiles.user_role,
         };
       }
       
-      return {
+      const booking: Booking = {
         id: item.id,
         car_id: item.car_id,
         user_id: item.user_id,
         start_date: item.start_date,
         end_date: item.end_date,
-        status: item.status as 'pending' | 'confirmed' | 'cancelled' | 'completed',
+        status: item.status,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        cars: item.cars ? {
-          ...item.cars,
-          images: [],
-          bookings: [],
-        } : undefined,
+        pickup_time: item.pickup_time,
+        return_time: item.return_time,
+        location: item.location,
+        message: item.message,
+        total_price: item.total_price,
+        prefer_whatsapp: item.prefer_whatsapp,
+        cars: item.cars,
         profiles: profileData,
       };
-    }) as Booking[];
+      
+      return booking;
+    });
 
     // Filter by location if specified
     const filteredBookings = locationFilter

@@ -18,7 +18,7 @@ export const BookingActions: React.FC<BookingActionsProps> = ({ bookings, onRefr
       // Format bookings data for CSV
       const csvData = bookings.map(booking => ({
         id: booking.id,
-        car: `${booking.cars?.brand || 'Unknown'} ${booking.cars?.model || 'Car'}`,
+        car: booking.cars ? `${booking.cars.brand || 'Unknown'} ${booking.cars.model || 'Car'}` : 'Unknown Car',
         user: booking.profiles?.full_name || 'Unknown User',
         status: booking.status,
         start_date: booking.start_date,

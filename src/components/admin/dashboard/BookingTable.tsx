@@ -46,7 +46,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({ bookings, loading })
               <TableRow key={booking.id}>
                 <TableCell className="font-mono text-xs">{booking.id.substring(0, 8)}</TableCell>
                 <TableCell>
-                  {booking.cars?.brand} {booking.cars?.model}
+                  {booking.cars ? `${booking.cars.brand} ${booking.cars.model}` : 'Unknown Car'}
                 </TableCell>
                 <TableCell>{booking.profiles?.full_name || 'Unknown User'}</TableCell>
                 <TableCell>
@@ -62,8 +62,8 @@ export const BookingTable: React.FC<BookingTableProps> = ({ bookings, loading })
                 <TableCell>
                   {format(new Date(booking.start_date), 'MMM dd')} - {format(new Date(booking.end_date), 'MMM dd, yyyy')}
                 </TableCell>
-                <TableCell>{booking.cars?.location}</TableCell>
-                <TableCell>${booking.cars?.price_per_day}/day</TableCell>
+                <TableCell>{booking.location || booking.cars?.location || 'Unknown'}</TableCell>
+                <TableCell>${booking.total_price || booking.cars?.price_per_day || 0}/day</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="sm">
                     View

@@ -40,6 +40,16 @@ export interface Booking {
   location?: string;
   message?: string;
   total_price?: number;
+  prefer_whatsapp?: boolean;
+  // References to joined tables
+  cars?: Car;
+  profiles?: {
+    id: string;
+    full_name: string | null;
+    phone_number: string | null;
+    license_status?: string | null;
+    user_role?: string | null;
+  } | null;
 }
 
 export interface BookingFormData {
@@ -53,7 +63,7 @@ export interface BookingFormData {
   totalDays: number;
   totalPrice: number;
   status: string;
-  preferWhatsApp?: boolean; // Added preferWhatsApp property
+  preferWhatsApp?: boolean;
 }
 
 export interface CarFilters {

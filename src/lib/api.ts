@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Car, BookingFormData, CarFilters } from "@/types/car";
+import { Car, BookingFormData, CarFilters, Booking } from "@/types/car";
 
+// Function to fetch cars with filters
 export const fetchCars = async (filters: CarFilters, page: number, pageSize: number): Promise<Car[]> => {
   let query = supabase
     .from('cars')
@@ -56,7 +57,8 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
   return data as Car[];
 };
 
-export const fetchCar = async (id: string): Promise<Car | null> => {
+// Function to fetch a single car by ID
+export const getCarById = async (id: string): Promise<Car | null> => {
   try {
     const { data, error } = await supabase
       .from('cars')
@@ -71,37 +73,17 @@ export const fetchCar = async (id: string): Promise<Car | null> => {
 
     if (error) throw error;
     
-    // Transform data to match Car interface
-    if (data) {
-      const car: Car = {
-        id: data.id,
-        brand: data.brand,
-        model: data.model,
-        year: data.year,
-        location: data.location,
-        price_per_day: data.price_per_day,
-        availability: data.availability,
-        car_type: data.car_type,
-        fuel_type: data.fuel_type,
-        transmission: data.transmission,
-        image_url: data.image_url,
-        host_id: data.host_id,
-        trust_rating: data.trust_rating,
-        description: data.description,
-        images: data.images,
-        host_rating: data.host_rating,
-        bookings: data.bookings
-      };
-      return car;
-    }
-    
-    return null;
+    return data as Car;
   } catch (error) {
     console.error('Error fetching car:', error);
     return null;
   }
 };
 
+// Alias for fetchCars for better semantic naming
+export const getCars = fetchCars;
+
+// Function to submit a booking
 export const submitBooking = async (bookingData: BookingFormData): Promise<{ id: string } | null> => {
   try {
     const { car, startDate, endDate, pickupTime, returnTime, location, message, totalPrice, preferWhatsApp } = bookingData;
@@ -119,7 +101,7 @@ export const submitBooking = async (bookingData: BookingFormData): Promise<{ id:
         message: message,
         total_price: totalPrice,
         status: 'pending',
-        preferWhatsApp: preferWhatsApp || false,
+        prefer_whatsapp: preferWhatsApp || false,
       })
       .select('id')
       .single();
@@ -131,4 +113,38 @@ export const submitBooking = async (bookingData: BookingFormData): Promise<{ id:
     console.error('Error submitting booking:', error);
     return null;
   }
+};
+
+// Helper function to calculate monthly availability
+export const getMonthlyAvailability = (
+  year: number, 
+  month: number, 
+  bookings: Booking[]
+): { date: Date; isAvailable: boolean }[] => {
+  // Create an array of days in the month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days = [];
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    
+    // Check if date is in any booking
+    const isBooked = bookings.some(booking => {
+      const startDate = new Date(booking.start_date);
+      const endDate = new Date(booking.end_date);
+      
+      return (
+        booking.status === 'confirmed' || booking.status === 'pending'
+      ) && (
+        date >= startDate && date <= endDate
+      );
+    });
+    
+    days.push({
+      date,
+      isAvailable: !isBooked
+    });
+  }
+  
+  return days;
 };

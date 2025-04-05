@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CarFilters as CarFiltersType } from "@/types/car";
+import { Checkbox } from "./ui/checkbox";
 
 interface CarFiltersProps {
   onFilterChange: (filters: CarFiltersType) => void;
@@ -18,26 +19,71 @@ interface CarFiltersProps {
 
 const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
-  const [transmission, setTransmission] = useState<"automatic" | "manual" | "all">("all");
-  const [carType, setCarType] = useState<string>("all");
-  const [fuelType, setFuelType] = useState<string>("all");
+  const [carType, setCarType] = useState<string[]>([]);
+  const [fuelType, setFuelType] = useState<string[]>([]);
+  const [transmission, setTransmission] = useState<string[]>([]);
+  const [city, setCity] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'newest' | 'rating'>('price_asc');
+
+  const handleCarTypeChange = (type: string) => {
+    setCarType(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type) 
+        : [...prev, type]
+    );
+  };
+
+  const handleFuelTypeChange = (type: string) => {
+    setFuelType(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type) 
+        : [...prev, type]
+    );
+  };
+
+  const handleTransmissionChange = (type: string) => {
+    setTransmission(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type) 
+        : [...prev, type]
+    );
+  };
+
+  const handleCityChange = (city: string) => {
+    setCity(prev => 
+      prev.includes(city) 
+        ? prev.filter(c => c !== city) 
+        : [...prev, city]
+    );
+  };
 
   const handleApplyFilters = () => {
     onFilterChange({
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1],
-      transmission,
+      priceRange,
       carType,
       fuelType,
+      transmission,
+      city,
+      sortBy
     });
   };
 
   const handleResetFilters = () => {
     setPriceRange([0, 200]);
-    setTransmission("all");
-    setCarType("all");
-    setFuelType("all");
-    onFilterChange({});
+    setCarType([]);
+    setFuelType([]);
+    setTransmission([]);
+    setCity([]);
+    setSortBy('price_asc');
+    
+    onFilterChange({
+      priceRange: [0, 200],
+      carType: [],
+      fuelType: [],
+      transmission: [],
+      city: [],
+      sortBy: 'price_asc'
+    });
   };
 
   return (
@@ -58,52 +104,84 @@ const CarFilters: React.FC<CarFiltersProps> = ({ onFilterChange }) => {
         />
       </div>
       
-      {/* Transmission */}
-      <div className="mb-4">
-        <Label htmlFor="transmission" className="mb-1 block">Transmission</Label>
-        <Select value={transmission} onValueChange={(value) => setTransmission(value as any)}>
-          <SelectTrigger id="transmission">
-            <SelectValue placeholder="Any" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any</SelectItem>
-            <SelectItem value="automatic">Automatic</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
       {/* Car Type */}
       <div className="mb-4">
-        <Label htmlFor="car-type" className="mb-1 block">Car Type</Label>
-        <Select value={carType} onValueChange={setCarType}>
-          <SelectTrigger id="car-type">
-            <SelectValue placeholder="Any" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any</SelectItem>
-            <SelectItem value="sedan">Sedan</SelectItem>
-            <SelectItem value="suv">SUV</SelectItem>
-            <SelectItem value="sports">Sports</SelectItem>
-            <SelectItem value="hatchback">Hatchback</SelectItem>
-            <SelectItem value="van">Van</SelectItem>
-          </SelectContent>
-        </Select>
+        <Label className="mb-2 block">Car Type</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {['sedan', 'suv', 'sports', 'hatchback', 'van'].map(type => (
+            <div key={type} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`car-type-${type}`} 
+                checked={carType.includes(type)}
+                onCheckedChange={() => handleCarTypeChange(type)}
+              />
+              <label 
+                htmlFor={`car-type-${type}`}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </label>
+            </div>
+          ))}
+        </div>
       </div>
       
       {/* Fuel Type */}
       <div className="mb-4">
-        <Label htmlFor="fuel-type" className="mb-1 block">Fuel Type</Label>
-        <Select value={fuelType} onValueChange={setFuelType}>
-          <SelectTrigger id="fuel-type">
-            <SelectValue placeholder="Any" />
+        <Label className="mb-2 block">Fuel Type</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {['gasoline', 'diesel', 'hybrid', 'electric'].map(type => (
+            <div key={type} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`fuel-type-${type}`} 
+                checked={fuelType.includes(type)}
+                onCheckedChange={() => handleFuelTypeChange(type)}
+              />
+              <label 
+                htmlFor={`fuel-type-${type}`}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Transmission */}
+      <div className="mb-4">
+        <Label className="mb-2 block">Transmission</Label>
+        <div className="flex gap-3">
+          {['automatic', 'manual'].map(type => (
+            <div key={type} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`transmission-${type}`} 
+                checked={transmission.includes(type)}
+                onCheckedChange={() => handleTransmissionChange(type)}
+              />
+              <label 
+                htmlFor={`transmission-${type}`}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Sort By */}
+      <div className="mb-4">
+        <Label htmlFor="sort-by" className="mb-1 block">Sort By</Label>
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+          <SelectTrigger id="sort-by">
+            <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Any</SelectItem>
-            <SelectItem value="gasoline">Gasoline</SelectItem>
-            <SelectItem value="diesel">Diesel</SelectItem>
-            <SelectItem value="hybrid">Hybrid</SelectItem>
-            <SelectItem value="electric">Electric</SelectItem>
+            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="rating">Host Rating</SelectItem>
           </SelectContent>
         </Select>
       </div>

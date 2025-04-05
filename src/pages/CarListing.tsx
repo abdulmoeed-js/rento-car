@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getCars } from "@/lib/api";
+import { fetchCars } from "@/lib/api";
 import { CarFilters } from "@/types/car";
 import CarFiltersComponent from "@/components/CarFilters";
 import CarCard from "@/components/CarCard";
@@ -10,14 +10,23 @@ import { Button } from "@/components/ui/button";
 import { CarFront, User, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
+const defaultFilters: CarFilters = {
+  priceRange: [0, 200],
+  carType: [],
+  fuelType: [],
+  transmission: [],
+  city: [],
+  sortBy: 'price_asc'
+};
+
 const CarListing = () => {
   const { user, signOut } = useAuth();
-  const [filters, setFilters] = useState<CarFilters>({});
+  const [filters, setFilters] = useState<CarFilters>(defaultFilters);
   const navigate = useNavigate();
 
   const { data: cars = [], isLoading, refetch } = useQuery({
     queryKey: ['cars', filters],
-    queryFn: () => getCars(filters)
+    queryFn: () => fetchCars(filters, 1, 24) // Fetch first page with 24 items
   });
 
   // Redirect to auth if not logged in
@@ -99,7 +108,7 @@ const CarListing = () => {
                 <CarFront className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No cars found</h3>
                 <p className="text-muted-foreground mb-4">Try adjusting your filters to find available cars.</p>
-                <Button onClick={() => setFilters({})}>Reset Filters</Button>
+                <Button onClick={() => setFilters(defaultFilters)}>Reset Filters</Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
