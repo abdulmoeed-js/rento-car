@@ -21,6 +21,7 @@ export const BookingsTab: React.FC = () => {
   const fetchBookings = async () => {
     setLoading(true);
     try {
+      // Use explicit type parameters to avoid recursion
       let query = supabase
         .from('bookings')
         .select(`

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +32,7 @@ export const HostsTab: React.FC = () => {
         }
         acc[car.host_id].push(car.id);
         return acc;
-      }, {});
+      }, {} as Record<string, string[]>);
       
       // Get host information from profiles
       const hostIds = Object.keys(hostCars);
@@ -50,7 +51,14 @@ export const HostsTab: React.FC = () => {
       
       // Combine the data
       const hostsData = hostIds.map(hostId => {
-        const profile = profilesData.find(p => p.id === hostId) || {};
+        // Use type assertion to handle empty profiles safely
+        const profile = profilesData?.find(p => p.id === hostId) || {
+          full_name: null,
+          license_status: null,
+          license_uploaded_at: null,
+          phone_number: null
+        };
+        
         const mockUser = mockEmailsForHosts.find(u => u.id === hostId) || { email: 'unknown@example.com' };
         
         return {
