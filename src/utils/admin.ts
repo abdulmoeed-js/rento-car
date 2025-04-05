@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
     // We need to cast the entire response to any since the RPC function is not in types
-    const { data, error } = await (supabase
-      .rpc('has_role', { _user_id: userId, _role: 'admin' }) as any);
+    const { data, error } = await (supabase.rpc('has_role', { 
+      _user_id: userId, 
+      _role: 'admin' 
+    }) as any);
     
     if (error) {
       console.error('Error checking admin status:', error);
@@ -22,8 +24,8 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 export async function getKycStats() {
   try {
     // We need to cast to any because the profiles table is not in the TypeScript types
-    const { data, error } = await (supabase
-      .from('profiles') as any)
+    const { data, error } = await (supabase as any)
+      .from('profiles')
       .select('license_status')
       .not('license_status', 'is', null);
     
@@ -47,8 +49,8 @@ export async function getKycStats() {
 export async function getKycLogs(limit = 100) {
   try {
     // We need to cast to any because the kyc_review_logs table is not in types
-    const { data, error } = await (supabase
-      .from('kyc_review_logs') as any)
+    const { data, error } = await (supabase as any)
+      .from('kyc_review_logs')
       .select(`
         id,
         action,

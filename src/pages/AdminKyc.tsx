@@ -49,8 +49,8 @@ const AdminKyc = () => {
     queryKey: ["kyc-users"],
     queryFn: async () => {
       // We need to cast the entire query to any due to missing type definitions
-      const { data: profiles, error } = await (supabase
-        .from("profiles") as any)
+      const { data: profiles, error } = await (supabase as any)
+        .from("profiles")
         .select("*, users:auth.users(email, created_at)")
         .order("license_uploaded_at", { ascending: true })
         .not("license_status", "eq", "verified");
@@ -97,8 +97,8 @@ const AdminKyc = () => {
         "pending_reupload";
 
       // We need to cast to any because profiles table is not in type definitions
-      const { error: updateError } = await (supabase
-        .from("profiles") as any)
+      const { error: updateError } = await (supabase as any)
+        .from("profiles")
         .update({ license_status: newStatus })
         .eq("id", selectedUser.id);
 
@@ -106,8 +106,8 @@ const AdminKyc = () => {
 
       // Log the KYC review action
       // We need to cast to any because kyc_review_logs table is not in type definitions
-      const { error: logError } = await (supabase
-        .from("kyc_review_logs") as any)
+      const { error: logError } = await (supabase as any)
+        .from("kyc_review_logs")
         .insert({
           user_id: selectedUser.id,
           reviewer_id: currentUser?.id,
