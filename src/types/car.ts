@@ -36,6 +36,11 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   created_at: string;
   updated_at: string;
+  payment_intent_id?: string;
+  payment_status?: 'pending' | 'authorized' | 'captured' | 'cancelled' | 'refunded';
+  pickup_time?: string;
+  return_time?: string;
+  message?: string;
   cars?: Car;
   profiles?: Profile;
 }

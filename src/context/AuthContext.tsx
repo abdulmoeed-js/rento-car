@@ -1,12 +1,15 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
 import { logInfo, logError, logWarn, LogType } from "@/utils/logger";
+import { supabase } from "@/integrations/supabase/client";
+import { trackUserActivity, ActivityType } from "@/services/UserActivityService";
 
 interface User {
   id: string;
   email?: string;
   phone?: string;
-  licenseStatus: 'not_uploaded' | 'pending_verification' | 'verified' | 'rejected';
+  licenseStatus: 'not_uploaded' | 'pending_verification' | 'verified' | 'rejected' | 'pending_reupload';
   licenseImage?: string;
 }
 
@@ -38,53 +41,118 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [authMethod, setAuthMethod] = useState<'email' | 'phone' | null>(null);
   
-  // This would normally connect to a backend service
-  // For now, we'll simulate authentication with localStorage
+  // Initialize authentication state and connect to Supabase
   useEffect(() => {
     logInfo(LogType.AUTH, "Initializing authentication state");
-    const storedUser = localStorage.getItem('rentoUser');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      logInfo(LogType.AUTH, "User loaded from storage", { userId: parsedUser.id });
-    } else {
-      logInfo(LogType.AUTH, "No stored user found");
-    }
-    setIsLoading(false);
+    
+    const checkUser = async () => {
+      try {
+        // Check if user is authenticated with Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // User is authenticated, fetch their profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileError) {
+            logError(LogType.AUTH, "Error fetching user profile", { error: profileError });
+          }
+          
+          // Set user state
+          setUser({
+            id: session.user.id,
+            email: session.user.email || undefined,
+            phone: session.user.phone || undefined,
+            licenseStatus: (profileData?.license_status as any) || 'not_uploaded',
+            licenseImage: profileData?.license_image_url,
+          });
+          
+          setAuthMethod(session.user.email ? 'email' : 'phone');
+          logInfo(LogType.AUTH, "User authenticated from session", { userId: session.user.id });
+        } else {
+          // No active session
+          setUser(null);
+          setAuthMethod(null);
+          logInfo(LogType.AUTH, "No active session found");
+        }
+      } catch (error) {
+        logError(LogType.AUTH, "Error checking authentication state", { error });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Setup auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        logInfo(LogType.AUTH, "Auth state changed", { event });
+        
+        if (event === 'SIGNED_IN' && session) {
+          // Track login activity
+          trackUserActivity(ActivityType.LOGIN, {
+            method: session.user.email ? 'email' : 'phone',
+            timestamp: new Date().toISOString(),
+          });
+          
+          // Fetch user profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileError) {
+            logError(LogType.AUTH, "Error fetching user profile on sign in", { error: profileError });
+          }
+          
+          // Set user state
+          setUser({
+            id: session.user.id,
+            email: session.user.email || undefined,
+            phone: session.user.phone || undefined,
+            licenseStatus: (profileData?.license_status as any) || 'not_uploaded',
+            licenseImage: profileData?.license_image_url,
+          });
+          
+          setAuthMethod(session.user.email ? 'email' : 'phone');
+          toast.success('Successfully signed in!');
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setAuthMethod(null);
+          toast.info('Signed out successfully');
+        }
+      }
+    );
+    
+    // Initial check
+    checkUser();
+    
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
     logInfo(LogType.AUTH, "Attempting email sign in", { email });
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For demo, automatically "authenticate" with any valid email format
-      if (!email.includes('@')) {
-        const error = new Error('Invalid email format');
-        logError(LogType.AUTH, "Email sign in failed - invalid format", { email });
-        throw error;
-      }
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Check if user exists in our "database" (localStorage)
-      const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
-      const existingUser = storedUsers.find((u: any) => u.email === email);
+      if (error) throw error;
       
-      if (!existingUser) {
-        const error = new Error('User not found');
-        logError(LogType.AUTH, "Email sign in failed - user not found", { email });
-        throw error;
-      }
+      logInfo(LogType.AUTH, "Email sign in successful", { userId: data.user.id });
       
-      // In a real app, we would validate the password here
-      // For demo purposes, we'll accept any password
-      
-      setUser(existingUser);
-      localStorage.setItem('rentoUser', JSON.stringify(existingUser));
-      setAuthMethod('email');
-      logInfo(LogType.AUTH, "Email sign in successful", { userId: existingUser.id });
-      toast.success('Successfully signed in!');
+      // Note: User state is updated by the auth state change listener
     } catch (error: any) {
       logError(LogType.AUTH, "Email sign in error", { error: error.message });
       toast.error(error.message || 'Failed to sign in');
@@ -98,23 +166,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logInfo(LogType.AUTH, "Attempting phone sign in", { phone: phone.substring(0, 6) + "XXXX" });
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Basic validation for demo
+      // Basic validation
       if (!/^\d{10}$/.test(phone)) {
         const error = new Error('Please enter a valid 10-digit phone number');
         logError(LogType.AUTH, "Phone sign in failed - invalid format", { phone: phone.substring(0, 6) + "XXXX" });
         throw error;
       }
       
-      // In a real app, this would send an OTP to the phone number
+      // Send OTP via Supabase
+      const formattedPhone = `+1${phone}`; // Add country code for US numbers
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+      
+      if (error) throw error;
+      
       setAuthMethod('phone');
       logInfo(LogType.AUTH, "OTP sent for phone sign in", { phone: phone.substring(0, 6) + "XXXX" });
       toast.success('OTP sent to your phone!');
       
       // Store the phone temporarily for verification
-      localStorage.setItem('rentoTempPhone', phone);
+      localStorage.setItem('rentoTempPhone', formattedPhone);
     } catch (error: any) {
       logError(LogType.AUTH, "Phone sign in error", { error: error.message });
       toast.error(error.message || 'Failed to send OTP');
@@ -128,10 +201,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logInfo(LogType.AUTH, "Verifying OTP");
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For demo, we'll accept any 6-digit OTP
+      // Basic validation
       if (!/^\d{6}$/.test(otp)) {
         const error = new Error('Please enter a valid 6-digit OTP');
         logError(LogType.AUTH, "OTP verification failed - invalid format");
@@ -145,31 +216,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Check if user exists
-      const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
-      const existingUser = storedUsers.find((u: any) => u.phone === phone);
+      // Verify OTP with Supabase
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token: otp,
+        type: 'sms',
+      });
       
-      if (existingUser) {
-        setUser(existingUser);
-        localStorage.setItem('rentoUser', JSON.stringify(existingUser));
-        logInfo(LogType.AUTH, "OTP verification successful - existing user", { userId: existingUser.id });
-      } else {
-        // Create a new user account with phone
-        const newUser = {
-          id: Date.now().toString(),
-          phone,
-          licenseStatus: 'not_uploaded' as const
-        };
-        
-        const updatedUsers = [...storedUsers, newUser];
-        localStorage.setItem('rentoUsers', JSON.stringify(updatedUsers));
-        localStorage.setItem('rentoUser', JSON.stringify(newUser));
-        setUser(newUser);
-        logInfo(LogType.AUTH, "OTP verification successful - new user created", { userId: newUser.id });
-      }
+      if (error) throw error;
       
+      // User will be updated via the auth state change listener
       localStorage.removeItem('rentoTempPhone');
-      toast.success('Successfully signed in!');
+      
+      // Note: User profile is created via database trigger
+      
+      logInfo(LogType.AUTH, "OTP verification successful");
     } catch (error: any) {
       logError(LogType.AUTH, "OTP verification error", { error: error.message });
       toast.error(error.message || 'Failed to verify OTP');
@@ -183,8 +244,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logInfo(LogType.AUTH, "Attempting sign up", { email, hasPhone: !!phone });
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Basic validation
       if (!email.includes('@')) {
@@ -193,30 +252,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Check if user already exists
-      const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
-      if (storedUsers.some((u: any) => u.email === email)) {
-        const error = new Error('User with this email already exists');
-        logError(LogType.AUTH, "Sign up failed - email already exists", { email });
-        throw error;
-      }
-      
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
+      // Create user with Supabase
+      const { data, error } = await supabase.auth.signUp({
         email,
+        password,
         phone,
-        licenseStatus: 'not_uploaded' as const
-      };
+        options: {
+          data: {
+            full_name: email.split('@')[0], // Default name from email
+            phone_number: phone,
+          },
+        },
+      });
       
-      const updatedUsers = [...storedUsers, newUser];
-      localStorage.setItem('rentoUsers', JSON.stringify(updatedUsers));
-      localStorage.setItem('rentoUser', JSON.stringify(newUser));
+      if (error) throw error;
       
-      setUser(newUser);
+      // User profile is created via database trigger
+      
       setAuthMethod('email');
-      logInfo(LogType.AUTH, "Sign up successful", { userId: newUser.id });
+      logInfo(LogType.AUTH, "Sign up successful", { userId: data.user?.id });
       toast.success('Account created successfully!');
+      
+      // User state will be updated by the auth state change listener
     } catch (error: any) {
       logError(LogType.AUTH, "Sign up error", { error: error.message });
       toast.error(error.message || 'Failed to sign up');
@@ -230,8 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logInfo(LogType.KYC, "Attempting license upload");
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (!user) {
         const error = new Error('You must be logged in to upload a license');
@@ -239,23 +294,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Update user with license information
-      const updatedUser = {
+      // Upload image to Supabase Storage (would be implemented in a real app)
+      // For demo, we'll just update the profile
+      
+      // Update user profile with license information
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          license_image_url: licenseImage, // In a real app, this would be a storage URL
+          license_status: 'pending_verification',
+          license_uploaded_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Track activity
+      await trackUserActivity(ActivityType.LICENSE_UPLOAD, {
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Update local user state
+      setUser({
         ...user,
         licenseImage,
-        licenseStatus: 'pending_verification' as const
-      };
+        licenseStatus: 'pending_verification',
+      });
       
-      // Update in "database"
-      const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
-      const updatedUsers = storedUsers.map((u: any) => 
-        u.id === user.id ? updatedUser : u
-      );
-      
-      localStorage.setItem('rentoUsers', JSON.stringify(updatedUsers));
-      localStorage.setItem('rentoUser', JSON.stringify(updatedUser));
-      
-      setUser(updatedUser);
       logInfo(LogType.KYC, "License uploaded successfully", { userId: user.id });
       toast.success('License uploaded successfully! Verification pending.');
     } catch (error: any) {
@@ -271,23 +336,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logInfo(LogType.AUTH, "Password reset requested", { email });
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if user exists
-      const storedUsers = JSON.parse(localStorage.getItem('rentoUsers') || '[]');
-      const existingUser = storedUsers.find((u: any) => u.email === email);
+      // Request password reset via Supabase
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
       
-      if (!existingUser) {
-        // For security, don't reveal if the email exists or not
-        logWarn(LogType.AUTH, "Password reset requested for non-existent email", { email });
-        toast.success('If an account with that email exists, we have sent password reset instructions.');
-        return;
-      }
+      if (error) throw error;
       
-      // In a real app, this would send an email with password reset instructions
-      logInfo(LogType.AUTH, "Password reset email sent", { userId: existingUser.id });
-      toast.success('Password reset instructions sent to your email!');
+      // For security, don't reveal if the email exists or not
+      logInfo(LogType.AUTH, "Password reset email sent", { email });
+      toast.success('If an account with that email exists, we have sent password reset instructions.');
     } catch (error: any) {
       // For security, we still show success even if there's an error
       logError(LogType.AUTH, "Password reset error", { error: error.message, email });
@@ -297,12 +356,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
     logInfo(LogType.AUTH, "User signing out", { userId: user?.id });
-    localStorage.removeItem('rentoUser');
-    setUser(null);
-    setAuthMethod(null);
-    toast.info('Signed out successfully');
+    
+    try {
+      if (user) {
+        // Track logout activity
+        await trackUserActivity(ActivityType.LOGOUT, {
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // User state will be updated by the auth state change listener
+    } catch (error) {
+      logError(LogType.AUTH, "Error during sign out", { error });
+      toast.error('Error signing out');
+    }
   };
 
   const value = {

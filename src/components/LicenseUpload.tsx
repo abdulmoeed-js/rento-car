@@ -1,17 +1,27 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Camera, Upload, FileCheck, X, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import CameraCapture from "./CameraCapture";
+import { trackUserActivity, ActivityType } from "@/services/UserActivityService";
 
 const LicenseUpload: React.FC = () => {
   const { uploadLicense, user } = useAuth();
-  const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+
+  // Track component view
+  useEffect(() => {
+    if (user) {
+      trackUserActivity(ActivityType.LICENSE_UPDATED, {
+        action: "view_license_page",
+        current_status: user.licenseStatus,
+      });
+    }
+  }, [user]);
 
   const handleCapture = async (imageData: string) => {
     setShowCamera(false);

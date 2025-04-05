@@ -1,10 +1,11 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Booking } from "@/types/car";
+import { toast } from "sonner";
 import { logInfo, logError, LogType } from "@/utils/logger";
+import { Booking } from "@/types/car";
 
-// Define TypeScript type for the raw database response
-export interface BookingResponse {
+// Define an explicit interface for the booking response from Supabase
+interface BookingResponseItem {
   id: string;
   car_id: string;
   user_id: string;
@@ -13,89 +14,110 @@ export interface BookingResponse {
   status: string;
   created_at: string;
   updated_at: string;
-  cars: {
+  cars?: {
+    id: string;
     brand: string;
     model: string;
     location: string;
     price_per_day: number;
     [key: string]: any;
-  } | null;
-  profiles: {
+  };
+  profiles?: {
+    id: string;
     full_name: string | null;
     phone_number: string | null;
-  } | null;
-  flagged?: boolean;
+    license_status?: string | null;
+    [key: string]: any;
+  };
 }
 
-export const fetchBookings = async (
+export async function fetchBookings(
   statusFilter: string = "all",
   locationFilter: string = "",
   flaggedFilter: boolean = false
-): Promise<{ bookings: Booking[]; locations: string[] }> => {
+): Promise<{ bookings: Booking[]; locations: string[] }> {
   logInfo(LogType.ADMIN, "Fetching bookings with filters", {
-    statusFilter,
-    locationFilter,
-    flaggedFilter,
+    status: statusFilter,
+    location: locationFilter,
+    flagged: flaggedFilter,
   });
 
   try {
     let query = supabase
       .from("bookings")
-      .select(`
-        *,
-        cars (*),
-        profiles:user_id (full_name, phone_number)
-      `);
+      .select("*, cars(*), profiles(*)");
 
-    // Apply filters
     if (statusFilter !== "all") {
       query = query.eq("status", statusFilter);
     }
 
-    if (locationFilter) {
-      query = query.eq("cars.location", locationFilter);
+    // Get bookings
+    const { data: bookingsData, error } = await query;
+
+    if (error) {
+      throw error;
     }
 
-    // In a real app, you would have a 'flagged' column
-    if (flaggedFilter) {
-      query = query.eq("flagged", true);
-    }
+    // Extract unique locations from cars
+    const allLocations = new Set<string>();
+    
+    // Transform the response to match our Booking type
+    const bookings: Booking[] = (bookingsData as BookingResponseItem[]).map((item) => {
+      if (item.cars?.location) {
+        allLocations.add(item.cars.location);
+      }
+      
+      return {
+        id: item.id,
+        car_id: item.car_id,
+        user_id: item.user_id,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        status: item.status as 'pending' | 'confirmed' | 'cancelled' | 'completed',
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        cars: item.cars ? {
+          ...item.cars,
+          images: [],
+          bookings: [],
+        } : undefined,
+        profiles: item.profiles ? {
+          id: item.profiles.id,
+          full_name: item.profiles.full_name,
+          phone_number: item.profiles.phone_number,
+          license_status: item.profiles.license_status,
+        } : undefined,
+      };
+    }) as Booking[];
 
-    const { data, error } = await query;
+    // Filter by location if specified
+    const filteredBookings = locationFilter
+      ? bookings.filter((booking) => booking.cars?.location === locationFilter)
+      : bookings;
 
-    if (error) throw error;
+    // Filter flagged bookings if needed
+    const finalBookings = flaggedFilter
+      ? filteredBookings.filter((booking) => {
+          // Implement flagged criteria here
+          // For example, bookings that are pending for more than 7 days
+          const createdDate = new Date(booking.created_at);
+          const now = new Date();
+          const daysDifference = Math.floor(
+            (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return booking.status === "pending" && daysDifference > 7;
+        })
+      : filteredBookings;
 
-    // Get unique locations for filter dropdown
-    const uniqueLocations = data
-      ? [...new Set(data.map((booking: any) => booking.cars?.location).filter(Boolean))]
-      : [];
-
-    // Transform the data to match our Booking type
-    const transformedBookings: Booking[] = data
-      ? data.map((booking: any) => ({
-          id: booking.id,
-          car_id: booking.car_id,
-          user_id: booking.user_id,
-          start_date: booking.start_date,
-          end_date: booking.end_date,
-          status: booking.status as Booking["status"],
-          created_at: booking.created_at,
-          updated_at: booking.updated_at,
-          cars: booking.cars || undefined,
-          profiles: booking.profiles
-            ? {
-                id: booking.user_id,
-                full_name: booking.profiles.full_name,
-                phone_number: booking.profiles.phone_number,
-              }
-            : undefined,
-        }))
-      : [];
-
-    logInfo(LogType.ADMIN, `Successfully fetched ${transformedBookings.length} bookings`);
-    return { bookings: transformedBookings, locations: uniqueLocations as string[] };
+    logInfo(LogType.ADMIN, `Successfully fetched ${finalBookings.length} bookings`);
+    return {
+      bookings: finalBookings,
+      locations: Array.from(allLocations).sort(),
+    };
   } catch (error) {
     logError(LogType.ADMIN, "Error fetching bookings", { error });
+    toast.error("Failed to fetch bookings");
+    console.error("Error fetching bookings:", error);
     return { bookings: [], locations: [] };
   }
-};
+}
