@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
 import { logInfo, logError, logWarn, LogType } from "@/utils/logger";
@@ -278,8 +279,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             full_name: email.split('@')[0], // Default name from email
             phone_number: phone,
             user_role: userRole
-          },
-        },
+          }
+        }
       });
       
       if (error) throw error;

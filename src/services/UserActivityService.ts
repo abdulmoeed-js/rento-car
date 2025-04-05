@@ -25,8 +25,7 @@ export async function trackUserActivity(
       return false;
     }
 
-    // Call an edge function instead of directly querying a non-existent table
-    // This avoids type errors with the rpc method
+    // Call the Edge Function to log user activity
     const { error } = await supabase.functions.invoke('log-user-activity', {
       body: {
         user_id: user.id,

@@ -23,16 +23,15 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Insert the activity into user_activity table
-    // Note: This assumes you've created a user_activity table
-    const { error } = await supabaseClient
-      .from('user_roles') // Using an existing table for the example
-      .insert({
-        user_id,
-        role: 'user', // Default role
-        // We're using an existing table here as a workaround
-        // In a real implementation, you'd create a user_activity table
-      });
+    // Use RPC function to log user activity
+    const { error } = await supabaseClient.rpc(
+      'log_user_activity',
+      {
+        p_user_id: user_id,
+        p_activity_type: activity_type,
+        p_details: details
+      }
+    );
 
     if (error) {
       console.error("Error logging user activity:", error);
