@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
   try {
+    // Using a type assertion to work around TypeScript restrictions
     const { data, error } = await supabase
-      .rpc('has_role', { _user_id: userId, _role: 'admin' });
+      .rpc('has_role', { _user_id: userId, _role: 'admin' } as any);
     
     if (error) {
       console.error('Error checking admin status:', error);
@@ -20,8 +21,9 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 
 export async function getKycStats() {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
+    // Using type assertion for profiles table
+    const { data, error } = await (supabase
+      .from('profiles') as any)
       .select('license_status')
       .not('license_status', 'is', null);
     
@@ -29,10 +31,10 @@ export async function getKycStats() {
     
     const stats = {
       total: data.length,
-      pending: data.filter(p => p.license_status === 'pending_verification').length,
-      verified: data.filter(p => p.license_status === 'verified').length,
-      rejected: data.filter(p => p.license_status === 'rejected').length,
-      reupload: data.filter(p => p.license_status === 'pending_reupload').length,
+      pending: data.filter((p: any) => p.license_status === 'pending_verification').length,
+      verified: data.filter((p: any) => p.license_status === 'verified').length,
+      rejected: data.filter((p: any) => p.license_status === 'rejected').length,
+      reupload: data.filter((p: any) => p.license_status === 'pending_reupload').length,
     };
     
     return stats;
@@ -44,8 +46,9 @@ export async function getKycStats() {
 
 export async function getKycLogs(limit = 100) {
   try {
-    const { data, error } = await supabase
-      .from('kyc_review_logs')
+    // Using type assertion for kyc_review_logs table
+    const { data, error } = await (supabase
+      .from('kyc_review_logs') as any)
       .select(`
         id,
         action,

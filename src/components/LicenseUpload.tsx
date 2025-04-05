@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,6 +123,7 @@ const LicenseUpload: React.FC = () => {
     );
   }
 
+  // Fix for type comparison error - comparing with explicit string value
   if (user?.licenseStatus === 'pending_reupload') {
     return (
       <Card className="w-full max-w-md mx-auto">

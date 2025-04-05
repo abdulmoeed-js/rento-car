@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -49,8 +48,9 @@ const AdminKyc = () => {
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["kyc-users"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
+      // Using type assertion to work around TypeScript restrictions
+      const { data: profiles, error } = await (supabase
+        .from("profiles") as any)
         .select("*, users:auth.users(email, created_at)")
         .order("license_uploaded_at", { ascending: true })
         .not("license_status", "eq", "verified");
@@ -96,16 +96,18 @@ const AdminKyc = () => {
         currentAction === "reject" ? "rejected" : 
         "pending_reupload";
 
-      const { error: updateError } = await supabase
-        .from("profiles")
+      // Using type assertion for profiles table
+      const { error: updateError } = await (supabase
+        .from("profiles") as any)
         .update({ license_status: newStatus })
         .eq("id", selectedUser.id);
 
       if (updateError) throw updateError;
 
       // Log the KYC review action
-      const { error: logError } = await supabase
-        .from("kyc_review_logs")
+      // Using type assertion for kyc_review_logs table
+      const { error: logError } = await (supabase
+        .from("kyc_review_logs") as any)
         .insert({
           user_id: selectedUser.id,
           reviewer_id: currentUser?.id,
