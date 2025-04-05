@@ -7,21 +7,24 @@ import OtpForm from "./OtpForm";
 import ResetPasswordForm from "./ResetPasswordForm";
 import { useAuth } from "@/context/AuthContext";
 import LicenseUpload from "./LicenseUpload";
+import { useNavigate } from "react-router-dom";
 
 const AuthTabs: React.FC = () => {
   const { user, authMethod } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
   const [showOtpForm, setShowOtpForm] = useState<boolean>(false);
   const [showResetForm, setShowResetForm] = useState<boolean>(false);
+  const navigate = useNavigate();
 
-  // If authenticated and license not uploaded, show license upload
-  if (user && user.licenseStatus === 'not_uploaded') {
-    return <LicenseUpload />;
-  }
-
-  // If authenticated and license uploaded, show license status
+  // If authenticated, redirect to appropriate page based on license status
   if (user) {
-    return <LicenseUpload />;
+    if (user.licenseStatus === 'not_uploaded' || user.licenseStatus === 'pending_verification') {
+      return <LicenseUpload />;
+    } else {
+      // If license is verified, navigate to car listing
+      navigate("/cars");
+      return null;
+    }
   }
 
   // Handle OTP verification flow

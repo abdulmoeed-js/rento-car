@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getCars } from "@/lib/api";
 import { CarFilters } from "@/types/car";
@@ -13,11 +13,19 @@ import { useAuth } from "@/context/AuthContext";
 const CarListing = () => {
   const { user, signOut } = useAuth();
   const [filters, setFilters] = useState<CarFilters>({});
+  const navigate = useNavigate();
 
   const { data: cars = [], isLoading, refetch } = useQuery({
     queryKey: ['cars', filters],
     queryFn: () => getCars(filters)
   });
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   const handleFilterChange = (newFilters: CarFilters) => {
     setFilters(newFilters);
