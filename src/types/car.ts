@@ -6,13 +6,13 @@ export interface Car {
   year: number;
   location: string;
   price_per_day: number;
-  availability: boolean;
+  availability?: boolean; // Make optional since it's not in the DB response
   car_type: string;
   fuel_type: string;
   transmission: string;
-  image_url: string;
+  image_url?: string; // Make optional since it's not in the DB response
   host_id: string;
-  trust_rating: number;
+  trust_rating?: number; // Make optional since it's not always returned
   description: string;
   // Added properties that are being used throughout the application
   images?: {

@@ -10,7 +10,7 @@ import LicenseUpload from "./LicenseUpload";
 import { useNavigate } from "react-router-dom";
 
 const AuthTabs: React.FC = () => {
-  const { user, authMethod } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
   const [showOtpForm, setShowOtpForm] = useState<boolean>(false);
   const [showResetForm, setShowResetForm] = useState<boolean>(false);
@@ -28,7 +28,7 @@ const AuthTabs: React.FC = () => {
   }
 
   // Handle OTP verification flow
-  if (showOtpForm && authMethod === 'phone') {
+  if (showOtpForm) {
     return (
       <OtpForm
         onBack={() => setShowOtpForm(false)}

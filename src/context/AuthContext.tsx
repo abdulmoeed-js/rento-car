@@ -10,25 +10,23 @@ export interface User {
   phone: string;
   full_name: string;
   license_status: string;
-  licenseStatus: string; // Alias for license_status for backwards compatibility
   user_role: string;
-  userRole: string; // Alias for user_role for backwards compatibility
 }
 
 interface AuthContextProps {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  authMethod: 'email' | 'phone'; // Add missing property
+  authMethod: 'email' | 'phone';
   signUpWithEmail: (email: string, password: string, full_name: string, user_role?: 'renter' | 'host') => Promise<{ error: string | null; data: any | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithPhone: (phone: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
-  verifyOtp: (otp: string) => Promise<{ error: string | null }>; // Add missing function
+  verifyOtp: (otp: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
-  uploadLicense: (imageData: string) => Promise<void>; // Add missing function
-  signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<void>; // Add missing function
+  uploadLicense: (imageData: string) => Promise<void>;
+  signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -57,6 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+  const [phoneNumber, setPhoneNumber] = useState<string>(''); // Store phone number for OTP verification
 
   // Helper function to get user profile
   const getUserProfile = async (userId: string) => {
@@ -87,12 +86,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     getSession();
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleUserChange(session?.user || null);
     });
-  }, []);
 
-  const [supabaseUser, setSupabaseUser] = useState(supabase.auth.getUser);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // When user data changes, get additional user info
   const handleUserChange = async (authUser: any) => {
@@ -112,11 +113,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           phone: authUser.phone || '',
           full_name: profile.full_name || '',
           license_status: profile.license_status || 'not_uploaded',
-          licenseStatus: profile.license_status || 'not_uploaded',  // Add alias
           user_role: profile.user_role || 'renter',
-          userRole: profile.user_role || 'renter',  // Add alias
         };
         setUser(userData);
+      } else {
+        // If profile doesn't exist, create it
+        const { error } = await supabase.from('profiles').insert({
+          id: authUser.id,
+          user_role: 'renter',
+        });
+        
+        if (error) {
+          console.error('Error creating profile:', error);
+        } else {
+          // Retry getting profile
+          const newProfile = await getUserProfile(authUser.id);
+          if (newProfile) {
+            const userData: User = {
+              id: authUser.id,
+              email: authUser.email || '',
+              phone: authUser.phone || '',
+              full_name: newProfile.full_name || '',
+              license_status: newProfile.license_status || 'not_uploaded',
+              user_role: newProfile.user_role || 'renter',
+            };
+            setUser(userData);
+          }
+        }
       }
     } catch (error) {
       console.error('Error handling user change:', error);
@@ -175,9 +198,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           phone: data.user.phone || '',
           full_name: profile.full_name || '',
           license_status: profile.license_status || 'not_uploaded',
-          licenseStatus: profile.license_status || 'not_uploaded',
           user_role: profile.user_role || 'renter',
-          userRole: profile.user_role || 'renter',
         };
         
         setUser(userData);
@@ -203,6 +224,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   async function signInWithPhone(phone: string, userRole: 'renter' | 'host' = 'renter') {
     try {
       setAuthMethod('phone');
+      setPhoneNumber(phone); // Store phone number for OTP verification
+      
       const { data, error } = await supabase.auth.signInWithOtp({ 
         phone,
         options: {
@@ -223,8 +246,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   async function verifyOtp(otp: string) {
     try {
-      // We need a valid phone number here, which should be available in the context from signInWithPhone
+      if (!phoneNumber) {
+        throw new Error('Phone number not available for verification');
+      }
+      
       const { data, error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber,
         token: otp,
         type: 'sms',
       });
@@ -240,9 +267,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           phone: data.user.phone || '',
           full_name: profile.full_name || '',
           license_status: profile.license_status || 'not_uploaded',
-          licenseStatus: profile.license_status || 'not_uploaded',
           user_role: profile.user_role || 'renter',
-          userRole: profile.user_role || 'renter',
         };
         setUser(userData);
       }
@@ -273,7 +298,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(prev => prev ? {
         ...prev,
         license_status: 'pending_verification',
-        licenseStatus: 'pending_verification'
       } : null);
 
       trackUserActivity(ActivityType.LICENSE_UPDATED, {
