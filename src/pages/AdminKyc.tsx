@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -49,35 +50,63 @@ const AdminKyc = () => {
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["kyc-users", showOnlyPending],
     queryFn: async () => {
-      // Cast to any due to missing type definitions
-      let query = (supabase as any)
-        .from("profiles")
-        .select("*, users:auth.users(email, created_at)")
-        .not("license_status", "eq", "not_submitted")
-        .not("license_status", "is", null)
-        .order("license_uploaded_at", { ascending: false });
-      
-      if (showOnlyPending) {
-        query = query.eq("license_status", "pending_verification");
+      try {
+        // First get profiles with license data
+        let query = supabase
+          .from("profiles")
+          .select("id, license_status, license_image_url, license_uploaded_at, full_name, phone_number")
+          .not("license_status", "eq", "not_submitted")
+          .not("license_status", "is", null)
+          .order("license_uploaded_at", { ascending: false });
+        
+        if (showOnlyPending) {
+          query = query.eq("license_status", "pending_verification");
+        }
+
+        const { data: profiles, error } = await query;
+
+        if (error) {
+          console.error("Error fetching profiles:", error);
+          throw error;
+        }
+
+        // If no profiles, return empty array
+        if (!profiles.length) return [];
+
+        // Get emails for these users from auth.users table
+        const { data: authUsers, error: authError } = await supabase
+          .from("users")
+          .select("id, email, created_at")
+          .in("id", profiles.map(profile => profile.id));
+
+        if (authError) {
+          console.error("Error fetching users:", authError);
+          throw authError;
+        }
+
+        // Merge the data
+        return profiles.map((profile) => {
+          const authUser = authUsers?.find(user => user.id === profile.id);
+          return {
+            id: profile.id,
+            email: authUser?.email || 'Email not found',
+            created_at: authUser?.created_at || new Date().toISOString(),
+            licenseImageUrl: profile.license_image_url,
+            licenseStatus: profile.license_status,
+            licenseUploadedAt: profile.license_uploaded_at,
+            fullName: profile.full_name,
+            phoneNumber: profile.phone_number,
+          };
+        });
+      } catch (error) {
+        console.error("Error in fetchUsers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load user data",
+          variant: "destructive",
+        });
+        return [];
       }
-
-      const { data: profiles, error } = await query;
-
-      if (error) {
-        console.error("Error fetching profiles:", error);
-        throw error;
-      }
-
-      return profiles.map((profile: any) => ({
-        id: profile.id,
-        email: profile.users?.email || 'Unknown',
-        created_at: profile.users?.created_at || new Date().toISOString(),
-        licenseImageUrl: profile.license_image_url,
-        licenseStatus: profile.license_status,
-        licenseUploadedAt: profile.license_uploaded_at,
-        fullName: profile.full_name,
-        phoneNumber: profile.phone_number,
-      }));
     },
   });
 
@@ -107,8 +136,7 @@ const AdminKyc = () => {
         currentAction === "reject" ? "rejected" : 
         "pending_reupload";
 
-      // Cast to any because profiles table is not in type definitions
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({ license_status: newStatus })
         .eq("id", selectedUser.id);
@@ -116,8 +144,7 @@ const AdminKyc = () => {
       if (updateError) throw updateError;
 
       // Log the KYC review action
-      // Cast to any because kyc_review_logs table is not in type definitions
-      const { error: logError } = await (supabase as any)
+      const { error: logError } = await supabase
         .from("kyc_review_logs")
         .insert({
           user_id: selectedUser.id,

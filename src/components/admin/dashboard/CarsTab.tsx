@@ -168,9 +168,9 @@ export const CarsTab: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cars</SelectItem>
-                  <SelectItem value="high_availability">High Availability (>70%)</SelectItem>
+                  <SelectItem value="high_availability">High Availability (&gt;70%)</SelectItem>
                   <SelectItem value="medium_availability">Medium Availability (30-70%)</SelectItem>
-                  <SelectItem value="low_availability">Low Availability (<30%)</SelectItem>
+                  <SelectItem value="low_availability">Low Availability (&lt;30%)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
