@@ -30,7 +30,7 @@ export interface Car {
     available: boolean;
   }[];
   pickup_instructions?: string;
-  location_coordinates?: { lat: number; lng: number };
+  location_coordinates?: { lat?: number; lng?: number } | null;
   // Array properties - explicitly define as arrays or null
   images?: {
     id: string;
@@ -61,9 +61,9 @@ export interface Booking {
   // References to joined tables
   cars?: Car | null;
   profiles?: {
-    id: string;
-    full_name: string | null;
-    phone_number: string | null;
+    id?: string;
+    full_name?: string | null;
+    phone_number?: string | null;
     license_status?: string | null;
     user_role?: string | null;
     email?: string | null;

@@ -3,34 +3,27 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { BookingRequest } from "@/types/owner";
 import { toast } from "sonner";
 import RentoHeader from "@/components/layout/RentoHeader";
-import { BookingRequest } from "@/types/owner";
+import OwnerSidebar from "@/components/owner/OwnerSidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { Check, X, Calendar as CalendarIcon, Filter, Car } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Check, X, Calendar, Car, MapPin, Clock, MessageSquare, PhoneCall } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
 const BookingRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<BookingRequest[]>([]);
-  const [cars, setCars] = useState<{id: string, name: string}[]>([]);
-  const [filters, setFilters] = useState({
-    car: "all",
-    startDate: undefined as Date | undefined,
-    endDate: undefined as Date | undefined,
-    searchTerm: ""
-  });
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
 
   // Redirect if not logged in or not a host
   useEffect(() => {
@@ -49,30 +42,24 @@ const BookingRequests = () => {
       try {
         setLoading(true);
         
-        // First fetch user's cars
+        // First, get all cars owned by this host
         const { data: carsData, error: carsError } = await supabase
           .from('cars')
-          .select('id, brand, model')
+          .select('id')
           .eq('host_id', user.id);
           
         if (carsError) throw carsError;
         
-        const carsList = (carsData || []).map(car => ({
-          id: car.id,
-          name: `${car.brand} ${car.model}`
-        }));
-        
-        setCars(carsList);
-        
-        // If no cars, no need to fetch bookings
-        if (carsList.length === 0) {
+        if (!carsData || carsData.length === 0) {
+          setBookingRequests([]);
+          setFilteredRequests([]);
           setLoading(false);
           return;
         }
         
-        const carIds = carsList.map(car => car.id);
+        const carIds = carsData.map(car => car.id);
         
-        // Fetch booking requests with pending status
+        // Then, get all bookings for these cars
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select(`
@@ -80,103 +67,99 @@ const BookingRequests = () => {
             cars (*),
             profiles (*)
           `)
-          .in('car_id', carIds)
-          .eq('status', 'pending');
+          .in('car_id', carIds);
           
         if (bookingsError) throw bookingsError;
         
-        // Transform data to match BookingRequest type
-        const requests = (bookingsData || []).map(booking => ({
-          ...booking,
-          renter_name: booking.profiles?.full_name || 'Unknown User'
-        }));
-        
-        setBookingRequests(requests);
-        setFilteredRequests(requests);
+        if (bookingsData) {
+          // Transform to BookingRequest format
+          const requests = bookingsData.map(booking => {
+            // Safely access profiles data
+            const profile = booking.profiles || {};
+            const renterName = typeof profile === 'object' && profile ? (profile.full_name || 'Unknown User') : 'Unknown User';
+            
+            return {
+              ...booking,
+              renter_name: renterName,
+              // Add default values for other properties that might be missing
+              cars: booking.cars || null,
+              profiles: booking.profiles || null
+            } as BookingRequest;
+          });
+          
+          setBookingRequests(requests);
+          
+          // Set initial filtered requests based on default tab (pending)
+          const pending = requests.filter(req => req.status === 'pending');
+          setFilteredRequests(pending);
+        }
       } catch (error) {
         console.error('Error fetching booking requests:', error);
-        toast.error('Failed to load booking requests');
+        toast.error('Failed to load booking requests. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     
     fetchBookingRequests();
-  }, [user]);
+  }, [user, navigate]);
 
-  // Apply filters
+  // Filter requests based on selected tab
   useEffect(() => {
-    let filtered = [...bookingRequests];
+    if (!bookingRequests.length) return;
     
-    // Filter by car
-    if (filters.car !== "all") {
-      filtered = filtered.filter(request => request.car_id === filters.car);
+    switch (selectedTab) {
+      case 'all':
+        setFilteredRequests(bookingRequests);
+        break;
+      case 'pending':
+        setFilteredRequests(bookingRequests.filter(req => req.status === 'pending'));
+        break;
+      case 'accepted':
+        setFilteredRequests(bookingRequests.filter(req => req.status === 'confirmed'));
+        break;
+      case 'rejected':
+        setFilteredRequests(bookingRequests.filter(req => req.status === 'rejected'));
+        break;
+      default:
+        setFilteredRequests(bookingRequests);
     }
-    
-    // Filter by date range
-    if (filters.startDate) {
-      filtered = filtered.filter(request => {
-        const requestStartDate = new Date(request.start_date);
-        return requestStartDate >= filters.startDate!;
-      });
-    }
-    
-    if (filters.endDate) {
-      filtered = filtered.filter(request => {
-        const requestEndDate = new Date(request.end_date);
-        return requestEndDate <= filters.endDate!;
-      });
-    }
-    
-    // Filter by search term
-    if (filters.searchTerm) {
-      const term = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        request => 
-          request.renter_name.toLowerCase().includes(term) ||
-          (request.cars?.brand + ' ' + request.cars?.model).toLowerCase().includes(term) ||
-          request.message?.toLowerCase().includes(term)
-      );
-    }
-    
-    setFilteredRequests(filtered);
-  }, [filters, bookingRequests]);
+  }, [selectedTab, bookingRequests]);
 
-  // Handle booking actions
-  const handleBookingAction = async (bookingId: string, action: 'confirm' | 'reject') => {
+  // Handle request action (accept/reject)
+  const handleRequestAction = async (bookingId: string, action: 'accept' | 'reject') => {
     try {
+      setProcessingId(bookingId);
+      
+      const status = action === 'accept' ? 'confirmed' : 'rejected';
+      
       const { error } = await supabase
         .from('bookings')
-        .update({ 
-          status: action === 'confirm' ? 'confirmed' : 'rejected',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status })
         .eq('id', bookingId);
         
       if (error) throw error;
       
       // Update local state
-      setBookingRequests(prev => prev.filter(req => req.id !== bookingId));
-      
-      toast.success(
-        action === 'confirm' 
-          ? 'Booking confirmed successfully' 
-          : 'Booking rejected'
+      setBookingRequests(prev =>
+        prev.map(req =>
+          req.id === bookingId ? { ...req, status } : req
+        )
       );
+      
+      // Show success message
+      toast.success(
+        action === 'accept'
+          ? 'Booking request accepted!'
+          : 'Booking request rejected.'
+      );
+      
     } catch (error) {
-      console.error('Error updating booking:', error);
-      toast.error('Failed to update booking');
+      console.error(`Error ${action}ing booking:`, error);
+      toast.error(`Failed to ${action} booking. Please try again.`);
+    } finally {
+      setProcessingId(null);
     }
-  };
-
-  // Reset filters
-  const resetFilters = () => {
-    setFilters({
-      car: "all",
-      startDate: undefined,
-      endDate: undefined,
-      searchTerm: ""
-    });
   };
 
   return (
@@ -184,267 +167,207 @@ const BookingRequests = () => {
       <RentoHeader />
       
       <main className="container mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <CardTitle>Booking Requests</CardTitle>
-                <CardDescription>
-                  Manage pending booking requests for your cars
-                </CardDescription>
-              </div>
-              
-              <Button variant="outline" onClick={() => navigate('/owner-portal')}>
-                Back to Dashboard
-              </Button>
-            </div>
-          </CardHeader>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <OwnerSidebar />
           
-          <CardContent>
-            {/* Filters */}
-            <div className="mb-6 bg-muted p-4 rounded-md">
-              <div className="flex items-center gap-2 mb-3">
-                <Filter className="h-4 w-4" />
-                <h3 className="font-medium">Filters</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-sm mb-1 block">Car</label>
-                  <Select
-                    value={filters.car}
-                    onValueChange={(value) => setFilters({...filters, car: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All cars" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Cars</SelectItem>
-                      {cars.map(car => (
-                        <SelectItem key={car.id} value={car.id}>
-                          {car.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="flex-1">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Booking Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={selectedTab} onValueChange={(v: any) => setSelectedTab(v)}>
+                  <TabsList className="grid grid-cols-4 mb-6">
+                    <TabsTrigger value="pending">
+                      Pending
+                      {bookingRequests.filter(req => req.status === 'pending').length > 0 && (
+                        <Badge variant="destructive" className="ml-2">
+                          {bookingRequests.filter(req => req.status === 'pending').length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="accepted">Accepted</TabsTrigger>
+                    <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                  </TabsList>
                 
-                <div>
-                  <label className="text-sm mb-1 block">Start Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !filters.startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {filters.startDate ? format(filters.startDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={filters.startDate}
-                        onSelect={(date) => setFilters({...filters, startDate: date})}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div>
-                  <label className="text-sm mb-1 block">End Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !filters.endDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {filters.endDate ? format(filters.endDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={filters.endDate}
-                        onSelect={(date) => setFilters({...filters, endDate: date})}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div>
-                  <label className="text-sm mb-1 block">Search</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Search name or car..."
-                      value={filters.searchTerm}
-                      onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                    />
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={resetFilters}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Booking Requests List */}
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p>Loading booking requests...</p>
-              </div>
-            ) : filteredRequests.length > 0 ? (
-              <div className="space-y-4">
-                {filteredRequests.map((request) => (
-                  <Card key={request.id} className="overflow-hidden">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="md:col-span-1 bg-muted p-4">
-                        <div className="flex items-center mb-4">
-                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                            <User className="h-6 w-6 text-gray-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{request.renter_name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {request.profiles?.phone_number || "No phone"}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-start gap-2">
-                            <Car className="h-4 w-4 mt-0.5 text-gray-500" />
-                            <span>
-                              {request.cars?.brand} {request.cars?.model}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-start gap-2">
-                            <CalendarIcon className="h-4 w-4 mt-0.5 text-gray-500" />
-                            <div>
-                              <div>{format(new Date(request.start_date), "PPP")}</div>
-                              <div>to {format(new Date(request.end_date), "PPP")}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="md:col-span-2 p-4">
-                        <h4 className="font-medium mb-2">Message from Renter</h4>
-                        <div className="bg-gray-50 p-3 rounded-md text-sm min-h-24">
-                          {request.message || "No message provided"}
-                        </div>
-                        
-                        <div className="mt-4 text-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="font-medium block">Pickup:</span>
-                              <span>{request.pickup_time || "Not specified"}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium block">Return:</span>
-                              <span>{request.return_time || "Not specified"}</span>
-                            </div>
-                          </div>
-                          
-                          {request.prefer_whatsapp && (
-                            <div className="mt-2">
-                              <Badge variant="outline" className="bg-green-50">
-                                Prefers WhatsApp for communication
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="md:col-span-1 bg-gray-50 p-4 flex flex-col">
-                        <div className="flex-1">
-                          <h4 className="font-medium mb-2">Booking Details</h4>
-                          <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                              <span>Duration:</span>
-                              <span className="font-medium">
-                                {Math.round((new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) / (1000 * 60 * 60 * 24))} days
-                              </span>
-                            </div>
-                            
-                            <div className="flex justify-between">
-                              <span>Daily Rate:</span>
-                              <span className="font-medium">
-                                ${request.cars?.price_per_day}
-                              </span>
-                            </div>
-                            
-                            <div className="flex justify-between border-t pt-1 mt-1">
-                              <span>Total:</span>
-                              <span className="font-bold">
-                                ${request.total_price || "N/A"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 mt-4">
-                          <Button 
-                            className="w-full" 
-                            onClick={() => handleBookingAction(request.id, 'confirm')}
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Accept
-                          </Button>
-                          
-                          <Button 
-                            variant="outline" 
-                            className="w-full" 
-                            onClick={() => handleBookingAction(request.id, 'reject')}
-                          >
-                            <X className="mr-2 h-4 w-4" />
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
+                  {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="animate-spin h-12 w-12 border-4 border-rento-blue border-t-transparent rounded-full"></div>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <CalendarIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium mb-1">No booking requests</h3>
-                <p className="text-muted-foreground">
-                  {cars.length > 0 
-                    ? "You don't have any pending booking requests at the moment."
-                    : "You need to add a car before you can receive booking requests."}
-                </p>
-                
-                {cars.length === 0 && (
-                  <Button
-                    className="mt-4"
-                    onClick={() => navigate('/owner-portal/cars/new')}
-                  >
-                    Add Your First Car
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ) : filteredRequests.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">No {selectedTab === 'all' ? '' : selectedTab} requests</h3>
+                      <p className="text-muted-foreground">
+                        {selectedTab === 'pending' 
+                          ? 'You have no pending booking requests to review'
+                          : selectedTab === 'accepted'
+                          ? 'You have not accepted any booking requests yet'
+                          : selectedTab === 'rejected'
+                          ? 'You have not rejected any booking requests yet'
+                          : 'You have no booking requests yet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredRequests.map((request) => (
+                        <Card key={request.id} className="overflow-hidden">
+                          <div className="flex flex-col md:flex-row">
+                            <div className="md:w-1/3 bg-gray-100 p-4 flex flex-col space-y-4">
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="h-12 w-12 border">
+                                  <AvatarImage src={request.renter_image} alt={request.renter_name} />
+                                  <AvatarFallback>{request.renter_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <h3 className="font-medium">{request.renter_name}</h3>
+                                  <div className="flex items-center text-sm text-muted-foreground">
+                                    <span>{request.renter_rating || 'New User'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="rounded-md bg-white p-3 space-y-3">
+                                <div className="flex items-start space-x-2">
+                                  <Calendar className="h-5 w-5 text-rento-blue shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium">Trip Dates</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(parseISO(request.start_date), 'MMM d, yyyy')} - {format(parseISO(request.end_date), 'MMM d, yyyy')}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {request.pickup_time && request.return_time && (
+                                  <div className="flex items-start space-x-2">
+                                    <Clock className="h-5 w-5 text-rento-blue shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-sm font-medium">Pickup & Return</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {request.pickup_time} - {request.return_time}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {request.location && (
+                                  <div className="flex items-start space-x-2">
+                                    <MapPin className="h-5 w-5 text-rento-blue shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-sm font-medium">Pickup Location</p>
+                                      <p className="text-sm text-muted-foreground">{request.location}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {request.total_price && (
+                                  <div className="text-right font-bold">
+                                    ${request.total_price.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="md:w-2/3 p-4">
+                              <div className="mb-4 flex justify-between items-start">
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <Car className="h-5 w-5 text-rento-blue" />
+                                    <h3 className="font-medium">
+                                      {request.cars?.brand} {request.cars?.model} ({request.cars?.year})
+                                    </h3>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Request created on {format(parseISO(request.created_at), 'MMM d, yyyy')}
+                                  </p>
+                                </div>
+                                
+                                <Badge 
+                                  className={`
+                                    ${request.status === 'pending' ? 'bg-amber-500' : 
+                                      request.status === 'confirmed' ? 'bg-green-500' : 
+                                      'bg-red-500'
+                                    }
+                                  `}
+                                >
+                                  {request.status === 'pending' ? 'Pending' : 
+                                    request.status === 'confirmed' ? 'Accepted' : 
+                                    'Rejected'
+                                  }
+                                </Badge>
+                              </div>
+                              
+                              {request.message && (
+                                <div className="bg-gray-50 rounded-md p-3 mb-4">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <MessageSquare className="h-4 w-4" />
+                                    <p className="text-sm font-medium">Message from renter:</p>
+                                  </div>
+                                  <p className="text-sm">{request.message}</p>
+                                </div>
+                              )}
+                              
+                              {request.prefer_whatsapp && (
+                                <div className="flex items-center space-x-2 text-sm text-green-600 mb-4">
+                                  <PhoneCall className="h-4 w-4" />
+                                  <span>Prefers WhatsApp for communication</span>
+                                </div>
+                              )}
+                              
+                              {request.status === 'pending' && (
+                                <div className="flex space-x-2 mt-6">
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        disabled={!!processingId}
+                                      >
+                                        <X className="mr-2 h-4 w-4" />
+                                        Reject
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Reject Booking Request</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to reject this booking request? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          className="bg-red-600 hover:bg-red-700"
+                                          onClick={() => handleRequestAction(request.id, 'reject')}
+                                        >
+                                          Reject
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                  
+                                  <Button 
+                                    className="flex-1"
+                                    disabled={!!processingId}
+                                    onClick={() => handleRequestAction(request.id, 'accept')}
+                                  >
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Accept
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
     </div>
   );

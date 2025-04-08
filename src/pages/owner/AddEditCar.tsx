@@ -100,11 +100,20 @@ const AddEditCar = () => {
         
         if (carData) {
           // Map database data to form data
-          const images = Array.isArray(carData.images) ? carData.images : [];
-          const primaryImage = images.find(img => img.is_primary);
-          const primaryIndex = primaryImage 
-            ? images.findIndex(img => img.id === primaryImage.id) 
-            : 0;
+          const imagesData = carData.images;
+          const images = Array.isArray(imagesData) ? imagesData : [];
+          
+          // Find primary image or default to first
+          let primaryImage = null;
+          let primaryIndex = 0;
+          
+          if (images.length > 0) {
+            primaryImage = images.find(img => img.is_primary === true);
+            if (primaryImage) {
+              primaryIndex = images.findIndex(img => img.id === primaryImage.id);
+              if (primaryIndex === -1) primaryIndex = 0;
+            }
+          }
             
           setFormData({
             brand: carData.brand,
@@ -124,12 +133,12 @@ const AddEditCar = () => {
             primaryImageIndex: primaryIndex,
             price_per_day: carData.price_per_day,
             multi_day_discount: carData.multi_day_discount || 0,
-            cancellation_policy: carData.cancellation_policy || 'moderate',
+            cancellation_policy: (carData.cancellation_policy as 'flexible' | 'moderate' | 'strict') || 'moderate',
             available_days: carData.available_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
             available_hours: carData.available_hours || { start: '08:00', end: '20:00' },
             custom_availability: carData.custom_availability,
             location: carData.location,
-            location_coordinates: carData.location_coordinates as { lat: number; lng: number } || { lat: 0, lng: 0 },
+            location_coordinates: carData.location_coordinates as { lat?: number; lng?: number } || null,
             pickup_instructions: carData.pickup_instructions || '',
             description: carData.description || '',
             images: []
@@ -282,20 +291,22 @@ const AddEditCar = () => {
       // Update primary image if changed with existing images
       if (formData.existingImages && formData.existingImages.length > 0) {
         const primaryIndex = formData.primaryImageIndex || 0;
-        const primaryImageId = formData.existingImages[primaryIndex]?.id;
-        
-        if (primaryImageId) {
-          // Reset all to non-primary
-          await supabase
-            .from('car_images')
-            .update({ is_primary: false })
-            .eq('car_id', carId);
-            
-          // Set selected as primary
-          await supabase
-            .from('car_images')
-            .update({ is_primary: true })
-            .eq('id', primaryImageId);
+        if (formData.existingImages[primaryIndex]) {
+          const primaryImageId = formData.existingImages[primaryIndex].id;
+          
+          if (primaryImageId) {
+            // Reset all to non-primary
+            await supabase
+              .from('car_images')
+              .update({ is_primary: false })
+              .eq('car_id', carId);
+              
+            // Set selected as primary
+            await supabase
+              .from('car_images')
+              .update({ is_primary: true })
+              .eq('id', primaryImageId);
+          }
         }
       }
       

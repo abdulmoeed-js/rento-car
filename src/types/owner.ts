@@ -36,7 +36,7 @@ export interface CarFormData {
   
   // Step 5: Pickup Instructions
   location: string;
-  location_coordinates?: { lat: number; lng: number };
+  location_coordinates?: { lat?: number; lng?: number } | null;
   pickup_instructions?: string;
   
   // Additional fields

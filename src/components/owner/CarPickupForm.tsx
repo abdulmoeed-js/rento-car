@@ -14,9 +14,9 @@ const formSchema = z.object({
   location: z.string().min(5, "Location is required"),
   pickup_instructions: z.string().optional(),
   location_coordinates: z.object({
-    lat: z.number(),
-    lng: z.number()
-  }).optional()
+    lat: z.number().optional(),
+    lng: z.number().optional()
+  }).optional().nullable()
 });
 
 interface CarPickupFormProps {
@@ -32,7 +32,7 @@ const CarPickupForm: React.FC<CarPickupFormProps> = ({ formData, updateFormData 
     defaultValues: {
       location: formData.location || "",
       pickup_instructions: formData.pickup_instructions || "",
-      location_coordinates: formData.location_coordinates
+      location_coordinates: formData.location_coordinates || null
     }
   });
 
@@ -50,12 +50,11 @@ const CarPickupForm: React.FC<CarPickupFormProps> = ({ formData, updateFormData 
 
   // Update parent component with form data when values change
   useEffect(() => {
-    const formValues = {
+    updateFormData({
       location: watchedValues.location,
       pickup_instructions: watchedValues.pickup_instructions,
       location_coordinates: watchedValues.location_coordinates
-    };
-    updateFormData(formValues, isValid);
+    }, isValid);
   }, [watchedValues, isValid, updateFormData]);
 
   // Search for location
