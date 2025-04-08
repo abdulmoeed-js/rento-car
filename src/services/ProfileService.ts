@@ -27,10 +27,27 @@ export const handleUserChange = async (authUser: any): Promise<User | null> => {
       if (!profile) {
         console.error('Failed to create user profile');
       }
+    } else if (!profile.user_role) {
+      // If profile exists but doesn't have a user_role, update it to 'renter'
+      const { error } = await supabase
+        .from('profiles')
+        .update({ user_role: 'renter' })
+        .eq('id', authUser.id);
+      
+      if (error) {
+        console.error('Error updating user_role:', error);
+      } else {
+        // Refresh the profile data after update
+        profile = await getUserProfile(authUser.id);
+      }
     }
     
     // If we have a profile, map the data
     if (profile) {
+      // Make sure user_role is 'renter' if it's null or undefined
+      if (!profile.user_role) {
+        profile.user_role = 'renter';
+      }
       return mapUserData(authUser, profile);
     }
     

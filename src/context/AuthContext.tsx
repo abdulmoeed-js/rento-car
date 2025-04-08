@@ -49,7 +49,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         const userData = await handleUserChange(session.user);
-        setUser(userData);
+        if (userData) {
+          // Ensure user_role is never undefined
+          userData.user_role = userData.user_role || 'renter';
+          setUser(userData);
+        }
       } else {
         setUser(null);
       }
@@ -61,7 +65,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const userData = await handleUserChange(session.user);
-        setUser(userData);
+        if (userData) {
+          // Ensure user_role is never undefined
+          userData.user_role = userData.user_role || 'renter';
+          setUser(userData);
+        }
       }
       setIsLoading(false);
     };

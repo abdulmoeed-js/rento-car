@@ -2,18 +2,33 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CarFront, LogOut, User, Search, Plus, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 
 const Index = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      // Ensure the user has a role and redirect accordingly
+      const userRole = user.user_role || 'renter';
+      
+      if (userRole === 'renter') {
+        navigate("/cars");
+      } else if (userRole === 'host') {
+        navigate("/owner-portal");
+      }
+    }
+  }, [user, navigate]);
 
   if (!user) {
     // If not authenticated, redirect to auth page
-    window.location.href = "/auth";
-    return null;
+    return <Navigate to="/auth" />;
   }
 
+  // This will only render briefly before redirecting
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -46,74 +61,10 @@ const Index = () => {
         </div>
       </header>
       
-      {/* Main Content */}
-      <main className="container mx-auto p-4 mt-8">
-        <h1 className="text-2xl font-bold text-rento-dark mb-4">
-          Welcome to Rento {user.user_role === 'host' ? 'Owner Portal' : 'Dashboard'}
-        </h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {user.user_role === 'host' ? (
-            // Car Owner Portal UI
-            <>
-              <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Manage Your Vehicles</h2>
-                <p className="text-muted-foreground mb-4">
-                  Add, edit, and manage your car listings to start earning money.
-                </p>
-                <Button asChild className="w-full sm:w-auto" size="lg">
-                  <Link to="/owner-portal/cars" className="flex items-center">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Add New Car
-                  </Link>
-                </Button>
-              </div>
-              
-              <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Booking Requests</h2>
-                <p className="text-muted-foreground mb-4">
-                  View and manage booking requests for your vehicles.
-                </p>
-                <Button asChild variant="outline" className="w-full sm:w-auto" size="lg">
-                  <Link to="/owner-portal/bookings" className="flex items-center">
-                    <Calendar className="mr-2 h-5 w-5" />
-                    View Bookings
-                  </Link>
-                </Button>
-              </div>
-            </>
-          ) : (
-            // Renter Dashboard UI
-            <>
-              <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Find a Car</h2>
-                <p className="text-muted-foreground mb-4">
-                  Browse available cars and find the perfect vehicle for your next trip.
-                </p>
-                <Button asChild className="w-full sm:w-auto" size="lg">
-                  <Link to="/cars" className="flex items-center">
-                    <Search className="mr-2 h-5 w-5" />
-                    Browse Cars
-                  </Link>
-                </Button>
-              </div>
-              
-              <div className="bg-rento-gray p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">My Trips</h2>
-                <p className="text-muted-foreground mb-4">
-                  View your upcoming, active, and past bookings.
-                </p>
-                <Button asChild variant="outline" className="w-full sm:w-auto" size="lg">
-                  <Link to="/trips" className="flex items-center">
-                    <Calendar className="mr-2 h-5 w-5" />
-                    View My Trips
-                  </Link>
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </main>
+      {/* Main Content - This will briefly show before redirecting */}
+      <div className="container mx-auto p-8 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
+      </div>
     </div>
   );
 };
