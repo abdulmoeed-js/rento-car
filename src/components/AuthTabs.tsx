@@ -6,7 +6,6 @@ import SignupForm from "./SignupForm";
 import OtpForm from "./OtpForm";
 import ResetPasswordForm from "./ResetPasswordForm";
 import { useAuth } from "@/context/AuthContext";
-import LicenseUpload from "./LicenseUpload";
 import { useNavigate } from "react-router-dom";
 
 const AuthTabs: React.FC = () => {
@@ -16,15 +15,14 @@ const AuthTabs: React.FC = () => {
   const [showResetForm, setShowResetForm] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  // If authenticated, redirect to appropriate page based on license status
+  // If authenticated, redirect to appropriate dashboard based on user role
   if (user) {
-    if (user.license_status === 'not_uploaded' || user.license_status === 'pending_verification') {
-      return <LicenseUpload />;
+    if (user.user_role === 'host') {
+      navigate("/owner-portal");
     } else {
-      // If license is verified, navigate to car listing
       navigate("/cars");
-      return null;
     }
+    return null;
   }
 
   // Handle OTP verification flow

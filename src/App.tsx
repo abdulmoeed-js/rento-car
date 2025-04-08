@@ -13,7 +13,8 @@ import CarDetail from "./pages/CarDetail";
 import AdminKyc from "./pages/AdminKyc";
 import CreateAdmin from "./pages/CreateAdmin";
 import AdminDashboard from "./pages/AdminDashboard";
-import UploadLicense from "./pages/UploadLicense";
+import OwnerPortal from "./pages/OwnerPortal";
+import MyTrips from "./pages/MyTrips";
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/cars" element={<CarListing />} />
             <Route path="/cars/:id" element={<CarDetail />} />
-            <Route path="/upload-license" element={<UploadLicense />} />
+            <Route path="/owner-portal" element={<OwnerPortal />} />
+            <Route path="/trips" element={<MyTrips />} />
             <Route path="/admin/kyc" element={<AdminKyc />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/create-admin" element={<CreateAdmin />} />

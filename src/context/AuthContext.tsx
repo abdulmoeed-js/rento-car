@@ -10,7 +10,6 @@ import {
   signOut as signOutService,
   resetPassword as resetPasswordService,
   updatePassword as updatePasswordService,
-  uploadLicense as uploadLicenseService,
   signUp as signUpService
 } from '@/services/AuthService';
 import { handleUserChange } from '@/services/ProfileService';
@@ -32,7 +31,6 @@ const AuthContext = createContext<AuthContextProps>({
   signOut: async () => { },
   resetPassword: async () => ({ error: 'Not implemented' }),
   updatePassword: async () => ({ error: 'Not implemented' }),
-  uploadLicense: async () => { },
   signUp: async () => ({ error: null }),
 });
 
@@ -96,15 +94,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return await verifyOtpService(phoneNumber, otp);
   };
 
-  const handleUploadLicense = async (imageData: string) => {
-    await uploadLicenseService(user, imageData);
-    // Update local user state
-    setUser(prev => prev ? {
-      ...prev,
-      license_status: 'pending_verification',
-    } : null);
-  };
-
   const handleSignOut = async () => {
     await signOutService();
     setUser(null);
@@ -132,7 +121,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         signOut: handleSignOut,
         resetPassword: handleResetPassword,
         updatePassword: handleUpdatePassword,
-        uploadLicense: handleUploadLicense,
         signUp: handleSignUp,
       }}
     >
