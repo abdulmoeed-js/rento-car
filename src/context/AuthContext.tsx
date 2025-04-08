@@ -48,25 +48,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let mounted = true;
     
     // Set up the auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       
       if (session) {
-        try {
-          const userData = await handleUserChange(session.user);
-          if (userData && mounted) {
-            // Ensure user_role is never undefined
-            userData.user_role = userData.user_role || 'renter';
-            setUser(userData);
+        // Use setTimeout to avoid potential deadlocks
+        setTimeout(async () => {
+          try {
+            if (!mounted) return;
+            const userData = await handleUserChange(session.user);
+            if (userData && mounted) {
+              // Ensure user_role is never undefined
+              userData.user_role = userData.user_role || 'renter';
+              setUser(userData);
+            }
+          } catch (error) {
+            console.error("Error in auth state change handler:", error);
+          } finally {
+            if (mounted) setIsLoading(false);
           }
-        } catch (error) {
-          console.error("Error in auth state change handler:", error);
-        }
+        }, 0);
       } else {
-        if (mounted) setUser(null);
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-      
-      if (mounted) setIsLoading(false);
     });
 
     // Then get the initial session
