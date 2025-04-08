@@ -10,7 +10,8 @@ import {
   signOut as signOutService,
   resetPassword as resetPasswordService,
   updatePassword as updatePasswordService,
-  signUp as signUpService
+  signUp as signUpService,
+  uploadLicense as uploadLicenseService
 } from '@/services/AuthService';
 import { handleUserChange } from '@/services/ProfileService';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextProps>({
   resetPassword: async () => ({ error: 'Not implemented' }),
   updatePassword: async () => ({ error: 'Not implemented' }),
   signUp: async () => ({ error: null }),
+  uploadLicense: async () => {} // Added the missing function
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -107,6 +109,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return await updatePasswordService(newPassword);
   };
 
+  // Add the missing uploadLicense handler
+  const handleUploadLicense = async (imageData: string) => {
+    if (!user) {
+      toast.error('You must be logged in to upload a license');
+      return;
+    }
+    await uploadLicenseService(user, imageData);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -122,6 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         resetPassword: handleResetPassword,
         updatePassword: handleUpdatePassword,
         signUp: handleSignUp,
+        uploadLicense: handleUploadLicense
       }}
     >
       {children}
