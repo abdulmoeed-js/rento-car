@@ -1,252 +1,257 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Booking, Car } from "@/types/car"; // Make sure to import Car
+import { Car, Booking } from "@/types/car";
 import { EarningsSummary } from "@/types/owner";
-import { DollarSign } from "lucide-react"; // Add this import
-import RentoHeader from "@/components/layout/RentoHeader";
-import OwnerSidebar from "@/components/owner/OwnerSidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import RentoHeader from "@/components/layout/RentoHeader";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { CalendarRange, CircleDollarSign, Car as CarIcon } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 const OwnerEarnings = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [cars, setCars] = useState<Car[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [earningsSummary, setEarningsSummary] = useState<EarningsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
-
-  // Redirect if not logged in or not a host
+  const [cars, setCars] = useState<Car[]>([]);
+  const [earningsSummary, setEarningsSummary] = useState<EarningsSummary>({
+    total: 0,
+    byPeriod: [],
+    byCar: []
+  });
+  
+  // Fetch data on component mount
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-    } else if (user.user_role !== 'host') {
-      navigate("/");
-    }
-  }, [user, navigate]);
-
-  // Fetch earnings data
-  useEffect(() => {
-    const fetchEarnings = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        // First, get all cars owned by this host
-        const { data: carsData, error: carsError } = await supabase
-          .from('cars')
-          .select('*')
-          .eq('host_id', user.id);
-          
-        if (carsError) throw carsError;
-        
-        // Process cars to match the Car type
-        const processedCars = carsData ? carsData.map(car => ({
-          ...car,
-          location_coordinates: car.location_coordinates || null,
-          images: [],
-          bookings: []
-        } as Car)) : [];
-        
-        setCars(processedCars);
-        
-        if (!carsData || carsData.length === 0) {
-          setBookings([]);
-          setLoading(false);
-          return;
-        }
-        
-        const carIds = carsData.map(car => car.id);
-        
-        // Then, get all confirmed bookings for these cars
-        const { data: bookingsData, error: bookingsError } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            cars (*),
-            profiles (*)
-          `)
-          .in('car_id', carIds)
-          .eq('status', 'confirmed');
-          
-        if (bookingsError) throw bookingsError;
-        
-        const processedBookings = bookingsData ? bookingsData.map(booking => ({
-          ...booking,
-          cars: booking.cars || null,
-          profiles: booking.profiles || null
-        } as Booking)) : [];
-        
-        setBookings(processedBookings);
-        
-        // Calculate earnings
-        calculateEarnings(processedBookings, processedCars, selectedPeriod);
-        
-      } catch (error) {
-        console.error('Error fetching earnings:', error);
-        toast.error('Failed to load earnings data. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    fetchData();
+  }, [user]);
+  
+  // Fetch bookings and cars data
+  const fetchData = async () => {
+    if (!user) return;
     
-    fetchEarnings();
-  }, [user, selectedPeriod, navigate]);
-
-  // Calculate earnings
-  const calculateEarnings = (bookings: Booking[], cars: Car[], period: string) => {
-    let totalEarnings = 0;
-    const periodEarnings: { period: string; amount: number }[] = [];
-    const carEarnings: { carId: string; carName: string; amount: number }[] = [];
-
-    // Calculate total earnings
-    totalEarnings = bookings.reduce((sum, booking) => sum + (booking.total_price || 0), 0);
-
-    // Calculate earnings by period (simplified for monthly)
-    const monthlyEarnings: { [month: string]: number } = {};
-    bookings.forEach(booking => {
-      const bookingMonth = new Date(booking.start_date).toLocaleString('default', { month: 'long' });
-      monthlyEarnings[bookingMonth] = (monthlyEarnings[bookingMonth] || 0) + (booking.total_price || 0);
-    });
-
-    for (const month in monthlyEarnings) {
-      periodEarnings.push({ period: month, amount: monthlyEarnings[month] });
+    try {
+      setIsLoading(true);
+      
+      // Fetch confirmed and completed bookings
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          cars (*),
+          profiles (*)
+        `)
+        .or('status.eq.confirmed,status.eq.completed')
+        .eq('cars.host_id', user.id);
+      
+      if (bookingsError) throw bookingsError;
+      
+      // Fetch all cars
+      const { data: carsData, error: carsError } = await supabase
+        .from('cars')
+        .select('*')
+        .eq('host_id', user.id);
+      
+      if (carsError) throw carsError;
+      
+      if (bookingsData) {
+        // Add proper type assertion to handle the Supabase response
+        const typedBookings = bookingsData.map(booking => {
+          return {
+            ...booking,
+            cars: booking.cars as unknown as Car,
+            profiles: booking.profiles as unknown as Booking['profiles']
+          } as Booking;
+        });
+        
+        setBookings(typedBookings as Booking[]);
+        
+        // Calculate earnings if bookings exist
+        if (typedBookings.length > 0) {
+          calculateEarnings(typedBookings as Booking[]);
+        }
+      }
+      
+      if (carsData) {
+        // Add proper type assertion for cars
+        setCars(carsData as unknown as Car[]);
+      }
+    } catch (error) {
+      console.error('Error fetching earnings data:', error);
+      toast.error('Failed to load earnings data');
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  // Calculate earnings summary
+  const calculateEarnings = (bookings: Booking[]) => {
+    let totalEarnings = 0;
+    const byPeriod: { period: string; amount: number }[] = [];
+    const byCar: { carId: string; carName: string; amount: number; color?: string }[] = [];
+    
+    // Calculate total earnings and earnings by period
+    bookings.forEach(booking => {
+      if (booking.total_price) {
+        totalEarnings += booking.total_price;
+        
+        // Group by month
+        const monthYear = format(new Date(booking.start_date), 'MMMM yyyy');
+        const existingPeriod = byPeriod.find(item => item.period === monthYear);
+        
+        if (existingPeriod) {
+          existingPeriod.amount += booking.total_price;
+        } else {
+          byPeriod.push({ period: monthYear, amount: booking.total_price });
+        }
+      }
+    });
+    
     // Calculate earnings by car
     cars.forEach(car => {
-      const carBookings = bookings.filter(b => b.car_id === car.id);
-      const carTotal = carBookings.reduce((sum, booking) => sum + (booking.total_price || 0), 0);
-      carEarnings.push({ carId: car.id, carName: `${car.brand} ${car.model}`, amount: carTotal });
+      let carEarnings = 0;
+      
+      bookings.forEach(booking => {
+        if (booking.car_id === car.id && booking.total_price) {
+          carEarnings += booking.total_price;
+        }
+      });
+      
+      byCar.push({
+        carId: car.id,
+        carName: `${car.brand} ${car.model}`,
+        amount: carEarnings,
+        color: getRandomColor()
+      });
     });
-
-    // Add color property to carEarnings
-    const carEarningsWithColor = carEarnings.map((car, index) => ({
-      ...car,
-      color: getCarColor(index)
-    }));
-
+    
+    // Sort byCar in descending order of amount
+    byCar.sort((a, b) => b.amount - a.amount);
+    
+    // Update state
     setEarningsSummary({
       total: totalEarnings,
-      byPeriod: periodEarnings,
-      byCar: carEarningsWithColor
+      byPeriod: byPeriod.sort((a, b) => new Date(b.period).getTime() - new Date(a.period).getTime()),
+      byCar: byCar
     });
   };
 
-  // Helper function to get colors for charts
-  const getCarColor = (index: number) => {
-    const colors = [
-      '#4f46e5', '#0ea5e9', '#22c55e', '#f59e0b', '#ec4899',
-      '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ef4444',
-    ];
-    return colors[index % colors.length];
+  // Generate random color for car earnings chart
+  const getRandomColor = () => {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
   };
 
-  if (!user || user.user_role !== 'host') {
-    return null;
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <RentoHeader />
+        <div className="container mx-auto py-12 px-4 flex flex-col items-center justify-center">
+          <div className="animate-spin h-12 w-12 border-4 border-rento-blue border-t-transparent rounded-full mb-4"></div>
+          <p className="text-lg">Loading earnings data...</p>
+        </div>
+      </div>
+    );
   }
-
-  const carData = cars as Car[]; // Type assertion
 
   return (
     <div className="min-h-screen bg-gray-50">
       <RentoHeader />
-
+      
       <main className="container mx-auto py-8 px-4">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <OwnerSidebar />
-
-          <div className="flex-1">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Earnings Summary</CardTitle>
+            <CardDescription>
+              Track your rental earnings and performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Total Earnings</CardTitle>
+                  <CardDescription>
+                    All time earnings from car rentals
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    ${earningsSummary.total.toFixed(2)}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Earnings by Period</CardTitle>
+                  <CardDescription>
+                    Earnings for the last 6 months
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {earningsSummary.byPeriod.slice(0, 6).map(period => (
+                      <div key={period.period} className="flex justify-between items-center">
+                        <span>{period.period}</span>
+                        <span className="font-medium">${period.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Earnings Summary</CardTitle>
-                  <Select onValueChange={setSelectedPeriod} defaultValue={selectedPeriod}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      {/* Add other periods as needed */}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <CardTitle>Earnings by Car</CardTitle>
+                <CardDescription>
+                  Earnings from each car you have listed
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-64 w-full" />
-                  </div>
-                ) : earningsSummary ? (
-                  <div className="space-y-6">
-                    <div className="bg-muted p-6 rounded-lg text-center">
-                      <h3 className="text-lg font-medium mb-2">Total Earnings</h3>
-                      <p className="text-4xl font-bold text-green-600">${earningsSummary.total.toFixed(2)}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-3">Earnings by Period</h3>
-                      {earningsSummary.byPeriod && earningsSummary.byPeriod.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={earningsSummary.byPeriod}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="period" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="amount" fill="#8884d8" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="text-muted-foreground">No earnings data available for the selected period.</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-3">Earnings by Car</h3>
-                      {earningsSummary.byCar && earningsSummary.byCar.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={earningsSummary.byCar}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="carName" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            {earningsSummary.byCar.map((car, index) => (
-                              <Bar key={car.carId} dataKey="amount" fill={car.color || getCarColor(index)} />
-                            ))}
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="text-muted-foreground">No earnings data available for cars.</p>
-                      )}
-                    </div>
-                  </div>
+              <CardContent className="space-y-4">
+                {earningsSummary.byCar.length > 0 ? (
+                  earningsSummary.byCar.map((carData, index) => (
+                    <CarEarningsCard key={carData.carId} carData={carData} amount={carData.amount} />
+                  ))
                 ) : (
-                  <div className="text-center py-8">
-                    <DollarSign className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <p className="text-muted-foreground">No earnings yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Earnings will appear here once you have confirmed bookings
-                    </p>
+                  <div className="text-center py-4">
+                    No earnings data available for your cars.
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
 };
+
+const CarEarningsCard = ({ carData, amount }: { carData: EarningsSummary['byCar'][0], amount: number }) => {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <div className="rounded-full w-8 h-8 flex items-center justify-center text-white" style={{ backgroundColor: carData.color }}>
+          <CarIcon className="h-4 w-4" />
+        </div>
+        <div>
+          <h4 className="font-medium">{carData.carName}</h4>
+          <p className="text-sm text-muted-foreground">Car ID: {carData.carId}</p>
+        </div>
+      </div>
+      <div className="font-medium">${amount.toFixed(2)}</div>
+    </div>
+  );
+};
+
+// Replace DollarSign with a proper icon from lucide-react
+import { DollarSign } from "lucide-react";
 
 export default OwnerEarnings;

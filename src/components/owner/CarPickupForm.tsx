@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,11 +49,14 @@ const CarPickupForm: React.FC<CarPickupFormProps> = ({ formData, updateFormData 
 
   // Update parent component with form data when values change
   useEffect(() => {
-    updateFormData({
+    const formValues = {
       location: watchedValues.location,
       pickup_instructions: watchedValues.pickup_instructions,
       location_coordinates: watchedValues.location_coordinates
-    }, isValid);
+    };
+    
+    // Use type assertion to match the expected type in CarFormData
+    updateFormData(formValues as Partial<CarFormData>, isValid);
   }, [watchedValues, isValid, updateFormData]);
 
   // Search for location

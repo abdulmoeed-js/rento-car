@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -99,7 +98,7 @@ const AddEditCar = () => {
         if (error) throw error;
         
         if (carData) {
-          // Cast carData to any to access properties that might not be in the type
+          // Cast carData to any to access all properties that might not be in the type
           const car = carData as any;
           
           // Map database data to form data
@@ -117,7 +116,7 @@ const AddEditCar = () => {
               if (primaryIndex === -1) primaryIndex = 0;
             }
           }
-            
+        
           setFormData({
             brand: car.brand,
             model: car.model,
