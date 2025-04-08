@@ -99,8 +99,11 @@ const AddEditCar = () => {
         if (error) throw error;
         
         if (carData) {
+          // Cast carData to any to access properties that might not be in the type
+          const car = carData as any;
+          
           // Map database data to form data
-          const imagesData = carData.images;
+          const imagesData = car.images;
           const images = Array.isArray(imagesData) ? imagesData : [];
           
           // Find primary image or default to first
@@ -116,31 +119,31 @@ const AddEditCar = () => {
           }
             
           setFormData({
-            brand: carData.brand,
-            model: carData.model,
-            year: carData.year,
-            transmission: carData.transmission,
-            fuel_type: carData.fuel_type,
-            doors: carData.doors || 4,
-            has_ac: carData.has_ac === undefined ? true : carData.has_ac,
-            license_plate: carData.license_plate || '',
-            car_type: carData.car_type,
+            brand: car.brand,
+            model: car.model,
+            year: car.year,
+            transmission: car.transmission,
+            fuel_type: car.fuel_type,
+            doors: car.doors || 4,
+            has_ac: car.has_ac === undefined ? true : car.has_ac,
+            license_plate: car.license_plate || '',
+            car_type: car.car_type,
             existingImages: Array.isArray(images) ? images.map(img => ({
               id: img.id,
               url: img.image_path,
               is_primary: img.is_primary
             })) : [],
             primaryImageIndex: primaryIndex,
-            price_per_day: carData.price_per_day,
-            multi_day_discount: carData.multi_day_discount || 0,
-            cancellation_policy: (carData.cancellation_policy as 'flexible' | 'moderate' | 'strict') || 'moderate',
-            available_days: carData.available_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-            available_hours: carData.available_hours || { start: '08:00', end: '20:00' },
-            custom_availability: carData.custom_availability,
-            location: carData.location,
-            location_coordinates: carData.location_coordinates as { lat?: number; lng?: number } || null,
-            pickup_instructions: carData.pickup_instructions || '',
-            description: carData.description || '',
+            price_per_day: car.price_per_day,
+            multi_day_discount: car.multi_day_discount || 0,
+            cancellation_policy: (car.cancellation_policy as 'flexible' | 'moderate' | 'strict') || 'moderate',
+            available_days: car.available_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+            available_hours: car.available_hours || { start: '08:00', end: '20:00' },
+            custom_availability: car.custom_availability,
+            location: car.location,
+            location_coordinates: car.location_coordinates as { lat?: number; lng?: number } || null,
+            pickup_instructions: car.pickup_instructions || '',
+            description: car.description || '',
             images: []
           });
           

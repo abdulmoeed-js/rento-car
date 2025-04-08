@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -72,12 +71,18 @@ const BookingRequests = () => {
         if (bookingsError) throw bookingsError;
         
         if (bookingsData) {
-          // Transform to BookingRequest format
+          // Transform to BookingRequest format with type safety
           const requests = bookingsData.map(booking => {
-            // Safely access profiles data
-            const profile = booking.profiles || {};
-            const renterName = typeof profile === 'object' && profile ? (profile.full_name || 'Unknown User') : 'Unknown User';
+            // Safely access profiles data by treating it as a generic object first
+            const profilesData = booking.profiles as any;
+            let renterName = 'Unknown User';
             
+            // Check if profiles exists and has full_name property
+            if (profilesData && typeof profilesData === 'object' && 'full_name' in profilesData) {
+              renterName = profilesData.full_name || 'Unknown User';
+            }
+            
+            // Create a properly typed BookingRequest object
             return {
               ...booking,
               renter_name: renterName,
