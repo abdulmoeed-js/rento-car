@@ -28,6 +28,32 @@ export const getUserProfile = async (userId: string) => {
 // Helper function to create user profile
 export const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter', fullName: string = '') => {
   try {
+    // Check if profile already exists to prevent duplicate inserts
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+      
+    if (existingProfile) {
+      // Profile already exists, just update it
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          user_role: userRole,
+          full_name: fullName,
+        })
+        .eq('id', userId);
+        
+      if (error) {
+        console.error('Error updating existing profile:', error);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Profile doesn't exist, create a new one
     const { error } = await supabase
       .from('profiles')
       .insert({
@@ -68,11 +94,29 @@ export const signUpWithEmail = async (email: string, password: string, full_name
     // Create profile if signup successful
     if (data && data.user) {
       await createUserProfile(data.user.id, user_role, full_name);
+      
+      trackUserActivity(ActivityType.LOGIN, {
+        method: 'email_signup',
+        user_role: user_role,
+      });
     }
 
     // Return success message
     return { error: null, data };
   } catch (error: any) {
+    console.error('Signup error:', error);
+    
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'email_signup',
+      error: error.message,
+      status: 'failed'
+    });
+    
+    // Check for specific error messages
+    if (error.message.includes('already registered')) {
+      return { error: 'This email is already registered. Please log in instead.', data: null };
+    }
+    
     return { error: error.message, data: null };
   }
 };
@@ -97,10 +141,23 @@ export const signUp = async (email: string, password: string, phone?: string, us
     // Create profile if signup successful
     if (data && data.user) {
       await createUserProfile(data.user.id, userRole);
+      
+      trackUserActivity(ActivityType.LOGIN, {
+        method: 'email_signup',
+        user_role: userRole,
+      });
     }
 
     return { error: null };
   } catch (error: any) {
+    console.error('Signup error:', error);
+    
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'email_signup',
+      error: error.message,
+      status: 'failed'
+    });
+    
     return { error: error.message };
   }
 };
@@ -129,11 +186,18 @@ export const signInWithEmail = async (email: string, password: string) => {
     
     return { error: null };
   } catch (error: any) {
+    console.error('Login error:', error);
+    
     trackUserActivity(ActivityType.LOGIN, {
       method: 'email',
       error: error.message,
       status: 'failed'
     });
+    
+    // Check for specific error messages
+    if (error.message.includes('Invalid login credentials')) {
+      return { error: 'Invalid email or password. Please try again.' };
+    }
     
     return { error: error.message };
   }
@@ -141,8 +205,11 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signInWithPhone = async (phone: string, userRole: 'renter' | 'host' = 'renter') => {
   try {
+    // Format phone number if needed (remove spaces, ensure proper format)
+    const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
+    
     const { data, error } = await supabase.auth.signInWithOtp({ 
-      phone,
+      phone: formattedPhone,
       options: {
         data: {
           user_role: userRole
@@ -151,9 +218,23 @@ export const signInWithPhone = async (phone: string, userRole: 'renter' | 'host'
     });
     
     if (error) throw error;
+    
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'phone_otp_sent',
+      user_role: userRole,
+    });
+    
     toast.success('OTP sent to your phone number');
     return { error: null };
   } catch (error: any) {
+    console.error('Phone login error:', error);
+    
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'phone_otp_sent',
+      error: error.message,
+      status: 'failed'
+    });
+    
     toast.error(error.message);
     return { error: error.message };
   }
@@ -182,8 +263,21 @@ export const verifyOtp = async (phone: string, otp: string) => {
       await createUserProfile(data.user.id, userRole);
     }
     
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'phone_otp_verified',
+      user_role: profile?.user_role || 'renter',
+    });
+    
     return { error: null };
   } catch (error: any) {
+    console.error('OTP verification error:', error);
+    
+    trackUserActivity(ActivityType.LOGIN, {
+      method: 'phone_otp_verified',
+      error: error.message,
+      status: 'failed'
+    });
+    
     toast.error(error.message);
     return { error: error.message };
   }
@@ -210,6 +304,8 @@ export const uploadLicense = async (user: User | null, imageData: string) => {
       previous_status: user.license_status,
       new_status: 'pending_verification'
     });
+    
+    toast.success('License uploaded successfully');
 
   } catch (error: any) {
     console.error('Error uploading license:', error);
@@ -225,6 +321,7 @@ export const signOut = async () => {
       method: 'manual',
     });
   } catch (error: any) {
+    console.error('Signout error:', error);
     toast.error(error.message);
     throw error;
   }
@@ -239,6 +336,7 @@ export const resetPassword = async (email: string) => {
     toast.success('Password reset link sent to your email');
     return { error: null };
   } catch (error: any) {
+    console.error('Reset password error:', error);
     toast.error(error.message);
     return { error: error.message };
   }
@@ -251,6 +349,7 @@ export const updatePassword = async (newPassword: string) => {
     toast.success('Password updated successfully');
     return { error: null };
   } catch (error: any) {
+    console.error('Update password error:', error);
     toast.error(error.message);
     return { error: error.message };
   }

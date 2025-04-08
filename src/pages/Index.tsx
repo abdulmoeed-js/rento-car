@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 
 const Index = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,8 +23,24 @@ const Index = () => {
     }
   }, [user, navigate]);
 
+  // Show loading state while auth is being determined
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2">
+            <CarFront className="h-8 w-8 text-rento-blue" />
+            <span className="font-bold text-2xl text-rento-blue">Rento</span>
+          </div>
+          <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, redirect to auth page
   if (!user) {
-    // If not authenticated, redirect to auth page
     return <Navigate to="/auth" />;
   }
 
