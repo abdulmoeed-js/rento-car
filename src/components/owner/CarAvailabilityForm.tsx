@@ -143,7 +143,11 @@ const CarAvailabilityForm: React.FC<CarAvailabilityFormProps> = ({ formData, upd
   // Update parent component with form data when values change
   useEffect(() => {
     const formData = {
-      ...watchedValues,
+      available_days: watchedValues.available_days,
+      available_hours: {
+        start: watchedValues.available_hours.start,
+        end: watchedValues.available_hours.end
+      },
       custom_availability: availabilityMode === 'custom' ? customDates : undefined
     };
     
@@ -278,7 +282,6 @@ const CarAvailabilityForm: React.FC<CarAvailabilityFormProps> = ({ formData, upd
                     Day: ({ date, ...props }) => (
                       <button
                         {...props}
-                        className={`w-9 h-9 ${props.className}`}
                         onClick={(e) => {
                           e.preventDefault();
                           const availability = getDateAvailability(date);

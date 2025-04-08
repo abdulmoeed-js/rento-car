@@ -14,16 +14,33 @@ export interface Car {
   host_id: string;
   trust_rating?: number; // Make optional since it's not always returned
   description: string;
-  // Added properties that are being used throughout the application
+  // Additional properties for owner portal
+  doors?: number;
+  has_ac?: boolean;
+  license_plate?: string;
+  multi_day_discount?: number;
+  cancellation_policy?: 'flexible' | 'moderate' | 'strict';
+  available_days?: string[];
+  available_hours?: {
+    start: string;
+    end: string;
+  };
+  custom_availability?: {
+    date: Date;
+    available: boolean;
+  }[];
+  pickup_instructions?: string;
+  location_coordinates?: { lat: number; lng: number };
+  // Array properties - explicitly define as arrays or null
   images?: {
     id: string;
     car_id: string;
     image_path: string;
     is_primary: boolean;
     created_at: string;
-  }[];
+  }[] | null;
   host_rating?: number;
-  bookings?: Booking[];
+  bookings?: Booking[] | null;
 }
 
 export interface Booking {
@@ -42,13 +59,14 @@ export interface Booking {
   total_price?: number;
   prefer_whatsapp?: boolean;
   // References to joined tables
-  cars?: Car;
+  cars?: Car | null;
   profiles?: {
     id: string;
     full_name: string | null;
     phone_number: string | null;
     license_status?: string | null;
     user_role?: string | null;
+    email?: string | null;
   } | null;
 }
 

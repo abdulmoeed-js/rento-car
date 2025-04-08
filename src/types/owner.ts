@@ -16,6 +16,7 @@ export interface CarFormData {
   // Step 2: Photos
   images: File[];
   primaryImageIndex: number;
+  existingImages?: Array<{id: string, url: string, is_primary?: boolean}>;
   
   // Step 3: Pricing
   price_per_day: number;
@@ -58,6 +59,7 @@ export interface EarningsSummary {
     carId: string;
     carName: string;
     amount: number;
+    color?: string;
   }[];
 }
 

@@ -50,7 +50,12 @@ const CarPickupForm: React.FC<CarPickupFormProps> = ({ formData, updateFormData 
 
   // Update parent component with form data when values change
   useEffect(() => {
-    updateFormData(watchedValues, isValid);
+    const formValues = {
+      location: watchedValues.location,
+      pickup_instructions: watchedValues.pickup_instructions,
+      location_coordinates: watchedValues.location_coordinates
+    };
+    updateFormData(formValues, isValid);
   }, [watchedValues, isValid, updateFormData]);
 
   // Search for location

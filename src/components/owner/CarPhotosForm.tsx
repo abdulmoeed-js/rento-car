@@ -120,11 +120,11 @@ const CarPhotosForm: React.FC<CarPhotosFormProps> = ({ formData, updateFormData 
     form.setValue('images', newImages);
     
     // Update primary image index if needed
-    if (primaryIndex === index) {
-      const newPrimaryIndex = newImages.length > 0 ? 0 : -1;
+    if (primaryIndex === index + existingImages.length) {
+      const newPrimaryIndex = newImages.length > 0 || existingImages.length > 0 ? 0 : -1;
       setPrimaryIndex(newPrimaryIndex);
       form.setValue('primaryImageIndex', newPrimaryIndex);
-    } else if (primaryIndex > index) {
+    } else if (primaryIndex > index + existingImages.length) {
       setPrimaryIndex(primaryIndex - 1);
       form.setValue('primaryImageIndex', primaryIndex - 1);
     }

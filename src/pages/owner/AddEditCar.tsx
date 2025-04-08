@@ -66,6 +66,7 @@ const AddEditCar = () => {
     available_hours: { start: '08:00', end: '20:00' },
     location: '',
     description: '',
+    existingImages: []
   });
   
   // Redirect if not logged in or not a host
@@ -99,7 +100,7 @@ const AddEditCar = () => {
         
         if (carData) {
           // Map database data to form data
-          const images = carData.images || [];
+          const images = Array.isArray(carData.images) ? carData.images : [];
           const primaryImage = images.find(img => img.is_primary);
           const primaryIndex = primaryImage 
             ? images.findIndex(img => img.id === primaryImage.id) 
@@ -115,11 +116,11 @@ const AddEditCar = () => {
             has_ac: carData.has_ac === undefined ? true : carData.has_ac,
             license_plate: carData.license_plate || '',
             car_type: carData.car_type,
-            existingImages: images.map(img => ({
+            existingImages: Array.isArray(images) ? images.map(img => ({
               id: img.id,
               url: img.image_path,
               is_primary: img.is_primary
-            })),
+            })) : [],
             primaryImageIndex: primaryIndex,
             price_per_day: carData.price_per_day,
             multi_day_discount: carData.multi_day_discount || 0,
@@ -128,7 +129,7 @@ const AddEditCar = () => {
             available_hours: carData.available_hours || { start: '08:00', end: '20:00' },
             custom_availability: carData.custom_availability,
             location: carData.location,
-            location_coordinates: carData.location_coordinates,
+            location_coordinates: carData.location_coordinates as { lat: number; lng: number } || { lat: 0, lng: 0 },
             pickup_instructions: carData.pickup_instructions || '',
             description: carData.description || '',
             images: []

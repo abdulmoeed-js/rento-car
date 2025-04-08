@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -77,7 +76,16 @@ const OwnerPortal = () => {
             .in('car_id', carIds);
             
           if (bookingsError) throw bookingsError;
-          allBookings = bookingsData || [];
+          
+          // Process bookings to ensure they match the Booking type
+          allBookings = bookingsData ? bookingsData.map(booking => {
+            return {
+              ...booking,
+              profiles: booking.profiles && typeof booking.profiles === 'object' 
+                ? booking.profiles 
+                : null
+            } as Booking;
+          }) : [];
           
           // Count pending requests
           const pending = allBookings.filter(booking => booking.status === 'pending').length;
@@ -90,7 +98,16 @@ const OwnerPortal = () => {
           setEarnings(totalEarnings);
         }
         
-        setCars(carsData || []);
+        // Process cars to ensure they match the Car type
+        const processedCars = carsData ? carsData.map(car => {
+          return {
+            ...car,
+            images: Array.isArray(car.images) ? car.images : [],
+            bookings: Array.isArray(car.bookings) ? car.bookings : []
+          } as Car;
+        }) : [];
+        
+        setCars(processedCars);
         setBookings(allBookings);
       } catch (error) {
         console.error('Error fetching owner data:', error);

@@ -43,8 +43,9 @@ const CarReviewForm: React.FC<CarReviewFormProps> = ({
     
     if (formData.images && formData.images.length > 0) {
       const primaryIndex = formData.primaryImageIndex || 0;
-      if (formData.images[primaryIndex]) {
-        return URL.createObjectURL(formData.images[primaryIndex]);
+      const adjustedIndex = primaryIndex - (formData.existingImages?.length || 0);
+      if (adjustedIndex >= 0 && formData.images[adjustedIndex]) {
+        return URL.createObjectURL(formData.images[adjustedIndex]);
       }
     }
     
@@ -169,6 +170,12 @@ const CarReviewForm: React.FC<CarReviewFormProps> = ({
           <Progress value={uploadProgress} className="h-2" />
         </div>
       )}
+      
+      <div className="flex justify-end">
+        <Button onClick={onSubmit} disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : 'Save Car'}
+        </Button>
+      </div>
     </div>
   );
 };
