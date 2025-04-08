@@ -67,6 +67,7 @@ export interface Booking {
     license_status?: string | null;
     user_role?: string | null;
     email?: string | null;
+    license_image_url?: string | null;
   } | null;
 }
 

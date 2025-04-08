@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -174,7 +175,8 @@ const BookingRequests = () => {
                     <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="md:col-span-1 flex items-center">
                         <Avatar className="mr-4">
-                          <AvatarImage src={request.profiles?.license_image_url || ""} />
+                          {/* Fix the license_image_url property access by checking if it exists */}
+                          <AvatarImage src={request.profiles && 'license_image_url' in request.profiles ? (request.profiles as any).license_image_url || "" : ""} />
                           <AvatarFallback><User /></AvatarFallback>
                         </Avatar>
                         <div>
