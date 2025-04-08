@@ -15,6 +15,10 @@ import CreateAdmin from "./pages/CreateAdmin";
 import AdminDashboard from "./pages/AdminDashboard";
 import OwnerPortal from "./pages/OwnerPortal";
 import MyTrips from "./pages/MyTrips";
+import AddEditCar from "./pages/owner/AddEditCar";
+import BookingRequests from "./pages/owner/BookingRequests";
+import OwnerBookings from "./pages/owner/OwnerBookings";
+import OwnerEarnings from "./pages/owner/OwnerEarnings";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +35,11 @@ const App = () => (
             <Route path="/cars" element={<CarListing />} />
             <Route path="/cars/:id" element={<CarDetail />} />
             <Route path="/owner-portal" element={<OwnerPortal />} />
+            <Route path="/owner-portal/cars/new" element={<AddEditCar />} />
+            <Route path="/owner-portal/cars/edit/:id" element={<AddEditCar />} />
+            <Route path="/owner-portal/bookings/requests" element={<BookingRequests />} />
+            <Route path="/owner-portal/bookings" element={<OwnerBookings />} />
+            <Route path="/owner-portal/earnings" element={<OwnerEarnings />} />
             <Route path="/trips" element={<MyTrips />} />
             <Route path="/admin/kyc" element={<AdminKyc />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
