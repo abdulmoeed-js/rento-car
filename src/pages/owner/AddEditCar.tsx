@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -89,7 +90,7 @@ const AddEditCar = () => {
           .from('cars')
           .select(`
             *,
-            images (*)
+            images:car_images(*)
           `)
           .eq('id', id)
           .eq('host_id', user.id)
@@ -98,7 +99,7 @@ const AddEditCar = () => {
         if (error) throw error;
         
         if (carData) {
-          // Cast carData to any to access all properties that might not be in the type
+          // Cast carData to any to access all properties
           const car = carData as any;
           
           // Map database data to form data
@@ -202,7 +203,11 @@ const AddEditCar = () => {
 
   // Submit form
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You must be logged in to save a car");
+      navigate("/auth");
+      return;
+    }
     
     try {
       setIsSubmitting(true);
@@ -267,6 +272,11 @@ const AddEditCar = () => {
           console.error("Error inserting car:", error);
           throw error;
         }
+        
+        if (!data || !data.id) {
+          throw new Error("Failed to get car ID after insertion");
+        }
+        
         carId = data.id;
       }
       
@@ -274,18 +284,6 @@ const AddEditCar = () => {
       
       // Handle image uploads
       if (formData.images && formData.images.length > 0) {
-        // Create car_images bucket if it doesn't exist
-        const { data: bucketData, error: bucketError } = await supabase.storage
-          .getBucket('car_images');
-          
-        if (bucketError && bucketError.message.includes('does not exist')) {
-          // Create bucket
-          await supabase.storage.createBucket('car_images', {
-            public: true,
-            fileSizeLimit: 10485760 // 10MB
-          });
-        }
-        
         for (let i = 0; i < formData.images.length; i++) {
           const file = formData.images[i];
           const isPrimary = i === (formData.primaryImageIndex || 0) - (formData.existingImages?.length || 0);
@@ -355,9 +353,9 @@ const AddEditCar = () => {
       
       toast.success(id ? 'Car updated successfully!' : 'Car added successfully!');
       navigate('/owner-portal');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting car:', error);
-      toast.error('Failed to save car. Please try again.');
+      toast.error(`Failed to save car: ${error.message || 'Please try again'}`);
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
@@ -426,6 +424,7 @@ const AddEditCar = () => {
               </div>
             </div>
             
+            {/* Form steps */}
             {currentStep === 'details' && (
               <CarDetailsForm 
                 formData={formData} 
