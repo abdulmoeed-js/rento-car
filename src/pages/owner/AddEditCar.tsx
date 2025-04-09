@@ -223,7 +223,14 @@ const AddEditCar = () => {
         cancellation_policy: formData.cancellation_policy,
         available_days: formData.available_days,
         available_hours: formData.available_hours,
-        custom_availability: formData.custom_availability,
+        custom_availability: formData.custom_availability ? 
+          formData.custom_availability.map(date => ({
+            date: date.date instanceof Date ? 
+              date.date.toISOString().split('T')[0] : 
+              date.date,
+            available: date.available
+          })) : 
+          null,
         location: formData.location,
         location_coordinates: formData.location_coordinates,
         pickup_instructions: formData.pickup_instructions,
@@ -267,6 +274,18 @@ const AddEditCar = () => {
       
       // Handle image uploads
       if (formData.images && formData.images.length > 0) {
+        // Create car_images bucket if it doesn't exist
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .getBucket('car_images');
+          
+        if (bucketError && bucketError.message.includes('does not exist')) {
+          // Create bucket
+          await supabase.storage.createBucket('car_images', {
+            public: true,
+            fileSizeLimit: 10485760 // 10MB
+          });
+        }
+        
         for (let i = 0; i < formData.images.length; i++) {
           const file = formData.images[i];
           const isPrimary = i === (formData.primaryImageIndex || 0) - (formData.existingImages?.length || 0);

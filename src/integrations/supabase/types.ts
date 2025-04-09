@@ -84,48 +84,75 @@ export type Database = {
       }
       cars: {
         Row: {
+          available_days: string[] | null
+          available_hours: Json | null
           brand: string
+          cancellation_policy: string | null
           car_type: string
           created_at: string
+          custom_availability: Json[] | null
           description: string
+          doors: number | null
           fuel_type: string
+          has_ac: boolean | null
           host_id: string
           id: string
+          license_plate: string | null
           location: string
           location_coordinates: unknown | null
           model: string
+          multi_day_discount: number | null
+          pickup_instructions: string | null
           price_per_day: number
           transmission: string
           updated_at: string
           year: number
         }
         Insert: {
+          available_days?: string[] | null
+          available_hours?: Json | null
           brand: string
+          cancellation_policy?: string | null
           car_type: string
           created_at?: string
+          custom_availability?: Json[] | null
           description: string
+          doors?: number | null
           fuel_type: string
+          has_ac?: boolean | null
           host_id: string
           id?: string
+          license_plate?: string | null
           location: string
           location_coordinates?: unknown | null
           model: string
+          multi_day_discount?: number | null
+          pickup_instructions?: string | null
           price_per_day: number
           transmission: string
           updated_at?: string
           year: number
         }
         Update: {
+          available_days?: string[] | null
+          available_hours?: Json | null
           brand?: string
+          cancellation_policy?: string | null
           car_type?: string
           created_at?: string
+          custom_availability?: Json[] | null
           description?: string
+          doors?: number | null
           fuel_type?: string
+          has_ac?: boolean | null
           host_id?: string
           id?: string
+          license_plate?: string | null
           location?: string
           location_coordinates?: unknown | null
           model?: string
+          multi_day_discount?: number | null
+          pickup_instructions?: string | null
           price_per_day?: number
           transmission?: string
           updated_at?: string
