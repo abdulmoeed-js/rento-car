@@ -44,3 +44,53 @@ export interface Car {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface Booking {
+  id: string;
+  car_id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  pickup_time?: string;
+  return_time?: string;
+  location?: string;
+  message?: string;
+  total_price?: number;
+  prefer_whatsapp?: boolean;
+  created_at: string;
+  updated_at: string;
+  cars?: Car;
+  profiles?: {
+    id: string;
+    full_name: string | null;
+    email?: string;
+    phone_number: string | null;
+    license_status?: string | null;
+    user_role?: string | null;
+    license_image_url?: string | null;
+  } | null;
+}
+
+export interface BookingFormData {
+  car: Car;
+  startDate: Date;
+  endDate: Date;
+  pickupTime?: string;
+  returnTime?: string;
+  location?: string;
+  message?: string;
+  totalDays: number;
+  totalPrice: number;
+  status: string;
+  preferWhatsApp?: boolean;
+}
+
+export interface CarFilters {
+  priceRange: [number, number];
+  carType: string[];
+  fuelType: string[];
+  transmission: string[];
+  city: string[];
+  sortBy: 'price_asc' | 'price_desc' | 'newest' | 'rating';
+}
