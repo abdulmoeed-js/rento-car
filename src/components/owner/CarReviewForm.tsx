@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { CarFormData } from "@/types/owner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +18,6 @@ const CarReviewForm: React.FC<CarReviewFormProps> = ({
   uploadProgress,
   onSubmit 
 }) => {
-  // Set review as validated on mount
-  useEffect(() => {
-    // This is a view-only step, so it's always valid
-    // The parent component needs this callback though
-  }, []);
-
   const getTotalImageCount = () => {
     let count = 0;
     if (formData.existingImages) count += formData.existingImages.length;
@@ -36,16 +29,20 @@ const CarReviewForm: React.FC<CarReviewFormProps> = ({
   const getPreviewImage = () => {
     if (formData.existingImages && formData.existingImages.length > 0) {
       const primaryIndex = formData.primaryImageIndex || 0;
-      if (formData.existingImages[primaryIndex]) {
+      if (primaryIndex < formData.existingImages.length && formData.existingImages[primaryIndex]) {
         return formData.existingImages[primaryIndex].url;
       }
     }
     
     if (formData.images && formData.images.length > 0) {
+      const existingLength = formData.existingImages?.length || 0;
       const primaryIndex = formData.primaryImageIndex || 0;
-      const adjustedIndex = primaryIndex - (formData.existingImages?.length || 0);
-      if (adjustedIndex >= 0 && formData.images[adjustedIndex]) {
+      const adjustedIndex = primaryIndex - existingLength;
+      
+      if (adjustedIndex >= 0 && adjustedIndex < formData.images.length) {
         return URL.createObjectURL(formData.images[adjustedIndex]);
+      } else if (formData.images[0]) {
+        return URL.createObjectURL(formData.images[0]);
       }
     }
     

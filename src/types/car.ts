@@ -1,4 +1,3 @@
-
 export interface Car {
   id: string;
   brand: string;
@@ -26,7 +25,7 @@ export interface Car {
     end: string;
   };
   custom_availability?: {
-    date: Date;
+    date: string; // Changed from Date to string for compatibility with database
     available: boolean;
   }[];
   pickup_instructions?: string;
@@ -41,6 +40,8 @@ export interface Car {
   }[] | null;
   host_rating?: number;
   bookings?: Booking[] | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Booking {

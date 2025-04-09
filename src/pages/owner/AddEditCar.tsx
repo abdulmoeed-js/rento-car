@@ -231,6 +231,8 @@ const AddEditCar = () => {
         host_id: user.id
       };
       
+      console.log("Submitting car data:", carData);
+      
       let carId = id;
       
       // Insert or update car record
@@ -242,7 +244,10 @@ const AddEditCar = () => {
           .eq('id', id)
           .eq('host_id', user.id);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating car:", error);
+          throw error;
+        }
       } else {
         // Insert new car
         const { data, error } = await supabase
@@ -251,29 +256,41 @@ const AddEditCar = () => {
           .select('id')
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error inserting car:", error);
+          throw error;
+        }
         carId = data.id;
       }
+      
+      console.log("Car saved with ID:", carId);
       
       // Handle image uploads
       if (formData.images && formData.images.length > 0) {
         for (let i = 0; i < formData.images.length; i++) {
           const file = formData.images[i];
-          const isPrimary = i === formData.primaryImageIndex;
+          const isPrimary = i === (formData.primaryImageIndex || 0) - (formData.existingImages?.length || 0);
           const fileName = `${carId}/${Date.now()}-${file.name}`;
+          
+          console.log("Uploading image:", fileName, "Primary:", isPrimary);
           
           // Upload image to storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('car_images')
             .upload(fileName, file);
             
-          if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.error("Error uploading image:", uploadError);
+            throw uploadError;
+          }
           
           // Get public URL
           const { data: { publicUrl } } = supabase.storage
             .from('car_images')
             .getPublicUrl(fileName);
             
+          console.log("Image uploaded with URL:", publicUrl);
+          
           // Create image record
           const { error: insertError } = await supabase
             .from('car_images')
@@ -283,7 +300,10 @@ const AddEditCar = () => {
               is_primary: isPrimary
             });
             
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error("Error inserting image record:", insertError);
+            throw insertError;
+          }
           
           // Update upload progress
           setUploadProgress(Math.round(((i + 1) / formData.images.length) * 100));
@@ -291,12 +311,14 @@ const AddEditCar = () => {
       }
       
       // Update primary image if changed with existing images
-      if (formData.existingImages && formData.existingImages.length > 0) {
-        const primaryIndex = formData.primaryImageIndex || 0;
-        if (formData.existingImages[primaryIndex]) {
+      if (formData.existingImages && formData.existingImages.length > 0 && formData.primaryImageIndex !== undefined) {
+        const primaryIndex = formData.primaryImageIndex;
+        if (primaryIndex < formData.existingImages.length && formData.existingImages[primaryIndex]) {
           const primaryImageId = formData.existingImages[primaryIndex].id;
           
           if (primaryImageId) {
+            console.log("Setting primary image ID:", primaryImageId);
+            
             // Reset all to non-primary
             await supabase
               .from('car_images')

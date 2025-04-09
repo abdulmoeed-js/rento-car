@@ -36,9 +36,17 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
   };
   
   const returnDate = getReturnDate();
-  const primaryImage = car.images?.find(img => img.is_primary)?.image_path || 
-    car.images?.[0]?.image_path || 
-    'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=1000';
+  
+  // Find the primary image or use the first available image
+  const getPrimaryImage = () => {
+    if (car.images && car.images.length > 0) {
+      const primaryImage = car.images.find(img => img.is_primary);
+      return primaryImage ? primaryImage.image_path : car.images[0].image_path;
+    }
+    return car.image_url || 'https://placehold.co/600x400?text=No+Image';
+  };
+
+  const primaryImage = getPrimaryImage();
 
   return (
     <Link to={`/cars/${car.id}`}>
