@@ -5,27 +5,27 @@ import React, {
   useContext,
   useCallback,
 } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-
-interface AuthContextType {
-  user: User | null;
-  userData: any | null;
-  session: Session | null;
-  loading: boolean;
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  updateUser: (data: any) => Promise<void>;
-}
+import { User, AuthContextType } from "@/types/auth";
+import { toast } from "sonner";
+import { mapUserToModel } from "@/utils/authUtils";
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
   session: null,
   loading: false,
+  isLoading: false, // Alias for loading
   signIn: async () => {},
   signOut: async () => {},
   updateUser: async () => {},
+  signInWithEmail: async () => ({ error: null }),
+  signInWithPhone: async () => ({ error: null }),
+  verifyOtp: async () => ({ error: null }),
+  resetPassword: async () => ({ error: null }),
+  uploadLicense: async () => {},
+  signUp: async () => ({ error: null }),
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -76,6 +76,157 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of additional methods
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error: any) {
+      console.error("Login error:", error);
+      return { error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithPhone = async (phone: string, userRole: 'renter' | 'host' = 'renter') => {
+    try {
+      setLoading(true);
+      // Format phone number if needed
+      const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
+      
+      const { data, error } = await supabase.auth.signInWithOtp({ 
+        phone: formattedPhone,
+        options: {
+          data: {
+            user_role: userRole
+          }
+        }
+      });
+      
+      if (error) throw error;
+      toast.success('OTP sent to your phone number');
+      return { error: null };
+    } catch (error: any) {
+      console.error("Phone login error:", error);
+      toast.error(error.message);
+      return { error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (otp: string) => {
+    try {
+      setLoading(true);
+      // We need the phone number from session or somewhere
+      const phoneNumber = userData?.phone || '';
+      
+      if (!phoneNumber) {
+        throw new Error('Phone number not available for verification');
+      }
+      
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber,
+        token: otp,
+        type: 'sms',
+      });
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error: any) {
+      console.error("OTP verification error:", error);
+      return { error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      if (error) throw error;
+      toast.success('Password reset link sent to your email');
+      return { error: null };
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      toast.error(error.message);
+      return { error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const uploadLicense = async (imageData: string) => {
+    try {
+      if (!user) throw new Error('User not authenticated');
+      setLoading(true);
+
+      // Update profile with license image URL and status
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          license_image_url: imageData,
+          license_status: 'pending_verification',
+          license_uploaded_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // Update local user data
+      setUserData({
+        ...userData,
+        license_image_url: imageData,
+        license_status: 'pending_verification',
+        license_uploaded_at: new Date().toISOString()
+      });
+      
+      toast.success('License uploaded successfully');
+    } catch (error: any) {
+      console.error('Error uploading license:', error);
+      toast.error('Failed to upload license');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            user_role: userRole
+          }
+        }
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      return { error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkProfile = useCallback(async (userId: string) => {
     if (!userId) return null;
     
@@ -93,13 +244,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             const { data: userData } = await supabase.auth.getUser();
             const email = userData.user?.email || '';
+            const user_role = userData.user?.user_metadata?.user_role || 'renter';
             
             const { data: newProfile, error: createError } = await supabase
               .from('profiles')
               .insert({
                 id: userId,
                 full_name: email.split('@')[0],
-                user_role: 'renter' // Default role
+                user_role: user_role,
+                license_status: 'not_uploaded'
               })
               .select('*')
               .single();
@@ -128,7 +281,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  // Enhanced init function to create profile if needed
+  // Enhanced init function to create profile if needed and use our mapping function
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -139,8 +292,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           async (event, session) => {
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
               if (session?.user) {
-                setUser(session.user);
                 const profile = await checkProfile(session.user.id);
+                
+                // Use our mapping function to create a consistent User object
+                const mappedUser = mapUserToModel(session.user, profile);
+                setUser(mappedUser);
                 
                 if (profile) {
                   setUserData({
@@ -164,8 +320,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const currentSession = sessionData.session;
         
         if (currentSession?.user) {
-          setUser(currentSession.user);
           const profile = await checkProfile(currentSession.user.id);
+          
+          // Use our mapping function here as well
+          const mappedUser = mapUserToModel(currentSession.user, profile);
+          setUser(mappedUser);
           
           if (profile) {
             setUserData({
@@ -193,9 +352,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userData,
     session,
     loading,
+    isLoading: loading, // Alias for loading
     signIn,
     signOut,
     updateUser,
+    signInWithEmail,
+    signInWithPhone,
+    verifyOtp,
+    resetPassword,
+    uploadLicense,
+    signUp,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

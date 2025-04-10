@@ -1,25 +1,30 @@
 
 export interface User {
   id: string;
-  email: string;
-  phone: string;
-  full_name: string;
-  license_status: string;
-  user_role: string;
+  email?: string;
+  phone?: string;
+  full_name?: string;
+  license_status?: string;
+  user_role?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface AuthContextProps {
+export interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  authMethod: 'email' | 'phone';
-  signUpWithEmail: (email: string, password: string, full_name: string, user_role?: 'renter' | 'host') => Promise<{ error: string | null; data: any | null }>;
+  userData: any | null;
+  session: any | null;
+  loading: boolean;
+  isLoading: boolean; // Alias for loading
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateUser: (data: any) => Promise<void>;
+  
+  // Additional methods being used in components
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithPhone: (phone: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
   verifyOtp: (otp: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
-  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
   uploadLicense: (imageData: string) => Promise<void>;
   signUp: (email: string, password: string, phone?: string, userRole?: 'renter' | 'host') => Promise<{ error: string | null }>;
 }
