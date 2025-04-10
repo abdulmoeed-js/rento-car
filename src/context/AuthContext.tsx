@@ -1,254 +1,202 @@
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
+import { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User, AuthContextProps } from '@/types/auth';
-import { 
-  signUpWithEmail,
-  signInWithEmail,
-  signInWithPhone,
-  verifyOtp as verifyOtpService,
-  signOut as signOutService,
-  resetPassword as resetPasswordService,
-  updatePassword as updatePasswordService,
-  signUp as signUpService,
-  uploadLicense as uploadLicenseService
-} from '@/services/AuthService';
-import { handleUserChange } from '@/services/ProfileService';
-import { toast } from 'sonner';
-
-interface AuthProviderProps {
-  children: React.ReactNode;
+interface AuthContextType {
+  user: User | null;
+  userData: any | null;
+  session: Session | null;
+  loading: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateUser: (data: any) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextProps>({
+const AuthContext = createContext<AuthContextType>({
   user: null,
-  isLoading: true,
-  isAuthenticated: false,
-  authMethod: 'email',
-  signUpWithEmail: async () => ({ error: 'Not implemented', data: null }),
-  signInWithEmail: async () => ({ error: 'Not implemented' }),
-  signInWithPhone: async () => ({ error: 'Not implemented' }),
-  verifyOtp: async () => ({ error: 'Not implemented' }),
-  signOut: async () => { },
-  resetPassword: async () => ({ error: 'Not implemented' }),
-  updatePassword: async () => ({ error: 'Not implemented' }),
-  signUp: async () => ({ error: null }),
-  uploadLicense: async () => {}
+  userData: null,
+  session: null,
+  loading: false,
+  signIn: async () => {},
+  signOut: async () => {},
+  updateUser: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [userData, setUserData] = useState<any | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    
-    // Set up the auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      
-      if (session) {
-        // Use setTimeout to avoid potential deadlocks
-        setTimeout(async () => {
-          try {
-            if (!mounted) return;
-            const userData = await handleUserChange(session.user);
-            if (userData && mounted) {
-              // Ensure user_role is never undefined
-              userData.user_role = userData.user_role || 'renter';
-              setUser(userData);
-            }
-          } catch (error) {
-            console.error("Error in auth state change handler:", error);
-          } finally {
-            if (mounted) setIsLoading(false);
-          }
-        }, 0);
-      } else {
-        if (mounted) {
-          setUser(null);
-          setIsLoading(false);
-        }
-      }
-    });
-
-    // Then get the initial session
-    const getSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && mounted) {
-          const userData = await handleUserChange(session.user);
-          if (userData && mounted) {
-            // Ensure user_role is never undefined
-            userData.user_role = userData.user_role || 'renter';
-            setUser(userData);
-          }
-        }
-      } catch (error) {
-        console.error("Error getting initial session:", error);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    
-    getSession();
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleSignUpWithEmail = async (email: string, password: string, full_name: string, user_role: 'renter' | 'host' = 'renter') => {
-    setIsLoading(true);
+  const signIn = async (email: string) => {
     try {
-      const result = await signUpWithEmail(email, password, full_name, user_role);
-      return result;
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) throw error;
+      alert("Check your email for the magic link.");
     } catch (error) {
-      console.error("Error in handleSignUpWithEmail:", error);
-      return { error: "An unexpected error occurred", data: null };
+      alert(error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSignUp = async (email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') => {
-    setIsLoading(true);
+  const signOut = async () => {
     try {
-      return await signUpService(email, password, phone, userRole);
-    } catch (error) {
-      console.error("Error in handleSignUp:", error);
-      return { error: "An unexpected error occurred" };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignInWithEmail = async (email: string, password: string) => {
-    setIsLoading(true);
-    setAuthMethod('email');
-    try {
-      return await signInWithEmail(email, password);
-    } catch (error) {
-      console.error("Error in handleSignInWithEmail:", error);
-      return { error: "An unexpected error occurred" };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignInWithPhone = async (phone: string, userRole: 'renter' | 'host' = 'renter') => {
-    setIsLoading(true);
-    setAuthMethod('phone');
-    setPhoneNumber(phone); // Store phone number for OTP verification
-    try {
-      return await signInWithPhone(phone, userRole);
-    } catch (error) {
-      console.error("Error in handleSignInWithPhone:", error);
-      return { error: "An unexpected error occurred" };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (otp: string) => {
-    setIsLoading(true);
-    try {
-      return await verifyOtpService(phoneNumber, otp);
-    } catch (error) {
-      console.error("Error in handleVerifyOtp:", error);
-      return { error: "An unexpected error occurred" };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    setIsLoading(true);
-    try {
-      await signOutService();
+      setLoading(true);
+      await supabase.auth.signOut();
       setUser(null);
+      setUserData(null);
+      setSession(null);
     } catch (error) {
-      console.error("Error in handleSignOut:", error);
-      toast.error("Failed to sign out. Please try again.");
+      console.error("Error signing out:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleResetPassword = async (email: string) => {
-    setIsLoading(true);
+  const updateUser = async (data: any) => {
     try {
-      return await resetPasswordService(email);
-    } catch (error) {
-      console.error("Error in handleResetPassword:", error);
-      return { error: "An unexpected error occurred" };
+      setLoading(true);
+      const { error } = await supabase.from("profiles").upsert(data);
+      if (error) throw error;
+      setUserData({ ...userData, ...data });
+    } catch (error: any) {
+      alert(error.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleUpdatePassword = async (newPassword: string) => {
-    setIsLoading(true);
+  const checkProfile = useCallback(async (userId: string) => {
+    if (!userId) return null;
+    
     try {
-      return await updatePasswordService(newPassword);
-    } catch (error) {
-      console.error("Error in handleUpdatePassword:", error);
-      return { error: "An unexpected error occurred" };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUploadLicense = async (imageData: string) => {
-    setIsLoading(true);
-    try {
-      if (!user) {
-        toast.error('You must be logged in to upload a license');
-        return;
-      }
-      await uploadLicenseService(user, imageData);
+      // Check if profile exists
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
       
-      // Update the local user state to reflect the license upload
-      if (user) {
-        setUser({
-          ...user,
-          license_status: 'pending_verification'
-        });
+      if (fetchError) {
+        // If profile doesn't exist, create one
+        if (fetchError.code === 'PGRST116') {
+          try {
+            const { data: userData } = await supabase.auth.getUser();
+            const email = userData.user?.email || '';
+            
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                full_name: email.split('@')[0],
+                user_role: 'renter' // Default role
+              })
+              .select('*')
+              .single();
+            
+            if (createError) {
+              console.error('Error creating profile:', createError);
+              throw createError;
+            }
+            
+            console.log('Created new profile:', newProfile);
+            return newProfile;
+          } catch (createProfileError) {
+            console.error('Failed to create user profile', createProfileError);
+            return null;
+          }
+        }
+        
+        console.error('Error fetching user profile:', fetchError);
+        return null;
       }
+      
+      return profile;
     } catch (error) {
-      console.error("Error in handleUploadLicense:", error);
-      toast.error("Failed to upload license. Please try again.");
-    } finally {
-      setIsLoading(false);
+      console.error('Unexpected error checking profile:', error);
+      return null;
     }
+  }, []);
+  
+  // Enhanced init function to create profile if needed
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        setLoading(true);
+        
+        // Set up auth listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+              if (session?.user) {
+                setUser(session.user);
+                const profile = await checkProfile(session.user.id);
+                
+                if (profile) {
+                  setUserData({
+                    ...session.user,
+                    ...profile
+                  });
+                }
+              }
+            } else if (event === 'SIGNED_OUT') {
+              setUser(null);
+              setUserData(null);
+              setSession(null);
+            }
+            
+            setSession(session);
+          }
+        );
+        
+        // Check current session
+        const { data: sessionData } = await supabase.auth.getSession();
+        const currentSession = sessionData.session;
+        
+        if (currentSession?.user) {
+          setUser(currentSession.user);
+          const profile = await checkProfile(currentSession.user.id);
+          
+          if (profile) {
+            setUserData({
+              ...currentSession.user,
+              ...profile
+            });
+          }
+        }
+        
+        return () => {
+          subscription?.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initAuth();
+  }, [checkProfile]);
+
+  const value = {
+    user,
+    userData,
+    session,
+    loading,
+    signIn,
+    signOut,
+    updateUser,
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        authMethod,
-        signUpWithEmail: handleSignUpWithEmail,
-        signInWithEmail: handleSignInWithEmail,
-        signInWithPhone: handleSignInWithPhone,
-        verifyOtp: handleVerifyOtp,
-        signOut: handleSignOut,
-        resetPassword: handleResetPassword,
-        updatePassword: handleUpdatePassword,
-        signUp: handleSignUp,
-        uploadLicense: handleUploadLicense
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export default AuthProvider;

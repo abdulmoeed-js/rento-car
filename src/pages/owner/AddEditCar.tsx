@@ -73,8 +73,11 @@ const AddEditCar = () => {
   useEffect(() => {
     if (!user) {
       navigate("/auth");
+      return;
     } else if (user.user_role !== 'host') {
+      toast.error("Only hosts can add or edit cars");
       navigate("/");
+      return;
     }
   }, [user, navigate]);
 
@@ -211,6 +214,14 @@ const AddEditCar = () => {
     
     try {
       setIsSubmitting(true);
+      
+      // Ensure bucket exists
+      const { error: bucketError } = await supabase.storage
+        .getBucket('car_images');
+      
+      if (bucketError && bucketError.message.includes('does not exist')) {
+        console.warn('Bucket does not exist, but should have been created by migration');
+      }
       
       // Prepare car data for database
       const carData = {
