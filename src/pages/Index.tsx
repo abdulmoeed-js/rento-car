@@ -1,13 +1,15 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { CarFront, LogOut, User, Search, Plus, Calendar } from "lucide-react";
+import { CarFront, LogOut, User, Search, Plus, Calendar, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { useChat } from "@/context/ChatContext";
 
 const Index = () => {
   const { user, signOut, isLoading } = useAuth();
+  const { unreadCount } = useChat();
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -127,14 +129,30 @@ const Index = () => {
           {user.user_role === 'host' ? 'Go to Owner Portal' : 'Find Cars'}
         </Button>
         
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={() => navigate("/trips")}
-        >
-          <Calendar className="h-5 w-5" />
-          My Trips
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => navigate("/trips")}
+          >
+            <Calendar className="h-5 w-5" />
+            My Trips
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="gap-2 relative"
+            onClick={() => navigate("/chat")}
+          >
+            <MessageSquare className="h-5 w-5" />
+            Chat
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
+                {unreadCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
