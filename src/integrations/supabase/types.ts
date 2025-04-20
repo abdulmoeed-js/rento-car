@@ -160,6 +160,27 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_rooms: {
+        Row: {
+          created_at: string
+          id: string
+          participants: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participants: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participants?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       host_ratings: {
         Row: {
           comment: string | null
@@ -217,6 +238,39 @@ export type Database = {
           reason?: string | null
           reviewer_id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          attachment_url: string | null
+          content: string
+          id: string
+          is_bot: boolean | null
+          is_read: boolean
+          receiver_id: string
+          sender_id: string
+          timestamp: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          content: string
+          id?: string
+          is_bot?: boolean | null
+          is_read?: boolean
+          receiver_id: string
+          sender_id: string
+          timestamp?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          content?: string
+          id?: string
+          is_bot?: boolean | null
+          is_read?: boolean
+          receiver_id?: string
+          sender_id?: string
+          timestamp?: string
         }
         Relationships: []
       }
