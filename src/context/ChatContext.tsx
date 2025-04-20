@@ -77,11 +77,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) throw new Error('You must be logged in to create a chat room');
 
     try {
-      // Check if chat room already exists with these participants
+      // We'll manually handle the SQL query as Supabase TypeScript doesn't know about our chat_rooms table yet
       const { data: existingRooms, error: fetchError } = await supabase
-        .from('chat_rooms')
-        .select('id, participants')
-        .contains('participants', [user.id, participantId]);
+        .rpc('get_chat_room_by_participants', { 
+          participant1: user.id, 
+          participant2: participantId 
+        });
 
       if (fetchError) {
         throw fetchError;
@@ -92,15 +93,13 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         return existingRooms[0].id;
       }
 
-      // Create new chat room
+      // Create new chat room with a custom query
       const roomId = uuidv4();
       const { error } = await supabase
-        .from('chat_rooms')
-        .insert({
-          id: roomId,
-          participants: [user.id, participantId],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+        .rpc('create_chat_room', { 
+          room_id: roomId,
+          user_id1: user.id,
+          user_id2: participantId
         });
 
       if (error) {
@@ -122,19 +121,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setIsSending(true);
       
-      const newMessage: Omit<ChatMessage, 'id'> = {
-        sender_id: user.id,
-        receiver_id: receiverId,
-        content,
-        timestamp: new Date().toISOString(),
-        is_read: false,
-        attachment_url: attachmentUrl
-      };
-      
+      // Using RPC function to insert message safely
       const { data, error } = await supabase
-        .from('messages')
-        .insert(newMessage)
-        .select();
+        .rpc('insert_message', {
+          sender: user.id,
+          receiver: receiverId,
+          msg_content: content,
+          msg_timestamp: new Date().toISOString(),
+          is_message_read: false,
+          attachment: attachmentUrl || null
+        });
       
       if (error) throw error;
       
@@ -144,16 +140,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         const botResponse = getBotResponse(content);
         if (botResponse) {
           setTimeout(async () => {
-            const botMessage: Omit<ChatMessage, 'id'> = {
-              sender_id: 'bot',
-              receiver_id: user.id,
-              content: botResponse,
-              timestamp: new Date().toISOString(),
-              is_read: false,
-              is_bot: true
-            };
-            
-            await supabase.from('messages').insert(botMessage);
+            await supabase
+              .rpc('insert_message', {
+                sender: 'bot',
+                receiver: user.id,
+                msg_content: botResponse,
+                msg_timestamp: new Date().toISOString(),
+                is_message_read: false,
+                attachment: null,
+                is_bot_message: true
+              });
           }, 1000); // Simulate slight delay for more natural bot response
         }
       }
@@ -173,9 +169,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .in('id', messageIds);
+        .rpc('mark_messages_as_read', { message_ids: messageIds });
       
       if (error) throw error;
       
@@ -198,15 +192,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return;
     
     try {
-      const { count, error } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
+      const { data, error } = await supabase
+        .rpc('get_unread_message_count', { user_identifier: user.id });
       
       if (error) throw error;
       
-      setUnreadCount(count || 0);
+      setUnreadCount(data || 0);
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }
@@ -218,10 +209,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       const { data, error } = await supabase
-        .from('chat_rooms')
-        .select('*')
-        .contains('participants', [user.id])
-        .order('updated_at', { ascending: false });
+        .rpc('get_user_chat_rooms', { user_identifier: user.id });
       
       if (error) throw error;
       
@@ -231,16 +219,21 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
-  // Fetch messages for current chat room
+  // Fetch messages for current chat or for a specific receiver
   const fetchMessages = useCallback(async () => {
-    if (!user || !currentChatRoom) return;
+    if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order('timestamp', { ascending: true });
+      let query;
+      if (currentChatRoom) {
+        // Fetch messages for a specific chat room
+        query = supabase.rpc('get_chat_room_messages', { room_identifier: currentChatRoom });
+      } else {
+        // Fetch direct messages between user and any other user
+        query = supabase.rpc('get_user_messages', { user_identifier: user.id });
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
