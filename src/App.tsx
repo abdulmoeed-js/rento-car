@@ -21,6 +21,7 @@ import AddEditCar from "./pages/owner/AddEditCar";
 import BookingRequests from "./pages/owner/BookingRequests";
 import OwnerBookings from "./pages/owner/OwnerBookings";
 import OwnerEarnings from "./pages/owner/OwnerEarnings";
+import SeedCars from "./pages/SeedCars";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/admin/kyc" element={<AdminKyc />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/create-admin" element={<CreateAdmin />} />
+              <Route path="/seed-cars" element={<SeedCars />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

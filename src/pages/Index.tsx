@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/ChatContext";
+import RentoHeader from "@/components/layout/RentoHeader";
 
 const Index = () => {
   const { user, signOut, isLoading } = useAuth();
@@ -14,15 +15,14 @@ const Index = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    // Only attempt to redirect if authentication check is complete
+    // Only attempt to redirect if authentication check is complete and user is logged in
     if (!isLoading && user) {
       setIsRedirecting(true);
       
-      // Ensure the user has a role and redirect accordingly
-      const userRole = user.user_role || 'renter';
-      
-      // Use a short timeout to prevent potential redirect loops
+      // Redirect based on user role
       const redirectTimer = setTimeout(() => {
+        const userRole = user.user_role || 'renter';
+        
         if (userRole === 'renter') {
           navigate("/cars");
         } else if (userRole === 'host') {
@@ -34,7 +34,7 @@ const Index = () => {
     }
   }, [user, isLoading, navigate]);
 
-  // If authentication is still loading, show a more informative loading state
+  // If still checking authentication, show a loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -44,14 +44,13 @@ const Index = () => {
             <span className="font-bold text-2xl text-rento-blue">Rento</span>
           </div>
           <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
-          <p className="text-muted-foreground">Loading Rento...</p>
-          <p className="text-xs text-muted-foreground mt-2">Please wait while we initialize your session.</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // If not authenticated and not loading, direct to auth page
+  // If not authenticated, show login option
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -68,12 +67,19 @@ const Index = () => {
               Sign In / Sign Up
             </Link>
           </Button>
+          
+          <Button variant="outline" className="mt-2" asChild>
+            <Link to="/cars">
+              <Search className="h-5 w-5 mr-2" />
+              Browse Cars
+            </Link>
+          </Button>
         </div>
       </div>
     );
   }
 
-  // Showing a redirecting state to prevent flashing content
+  // Show redirecting state when about to navigate away
   if (isRedirecting) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -89,37 +95,10 @@ const Index = () => {
     );
   }
 
-  // Default content (fallback, should rarely be seen)
+  // Default dashboard content (fallback, if redirection doesn't happen)
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-rento-blue text-white p-4 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <CarFront className="h-6 w-6" />
-            <span className="font-bold text-xl">Rento</span>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5" />
-              </div>
-              <span className="hidden sm:inline">
-                {user.email || user.phone}
-              </span>
-            </div>
-            
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="text-white hover:bg-white/20"
-              onClick={signOut}
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <RentoHeader />
       
       <div className="container mx-auto p-8 flex flex-col items-center justify-center">
         <Button 

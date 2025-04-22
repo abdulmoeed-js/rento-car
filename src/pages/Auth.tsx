@@ -35,8 +35,7 @@ const Auth: React.FC = () => {
         <Card className="w-full max-w-md p-6">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
-            <p className="text-muted-foreground">Loading authentication...</p>
-            <p className="text-xs text-muted-foreground mt-2">If this takes too long, please try refreshing the page.</p>
+            <p className="text-muted-foreground">Checking authentication...</p>
           </div>
         </Card>
       ) : (
