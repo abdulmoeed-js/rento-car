@@ -1,10 +1,10 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CarFormData } from "@/types/owner";
 import { toast } from "sonner";
-import { formatErrorMessage } from "@/utils/supabaseHelpers";
-import { hasRole } from "@/utils/supabaseHelpers";
+import { formatErrorMessage, hasRole } from "@/utils/supabaseHelpers";
 import { prepareCarData } from "@/utils/prepareCarData";
 import { uploadCarImages } from "./useCarImageUpload";
 
@@ -83,7 +83,10 @@ export const useCarManagement = (carId?: string) => {
           (bucket) => bucket.name === "car_images"
         );
         if (!bucketExists) {
-          await supabase.storage.createBucket("car_images", { public: true });
+          await supabase.storage.createBucket("car_images", { 
+            public: true,
+            fileSizeLimit: 5242880 // 5MB
+          });
         }
       } catch (error) {
         console.warn("Storage bucket check error (continuing):", error);

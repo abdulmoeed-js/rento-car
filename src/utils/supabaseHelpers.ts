@@ -1,50 +1,28 @@
 
-/**
- * Format error messages from Supabase responses
- */
+import { PostgrestError } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+
 export const formatErrorMessage = (error: any): string => {
-  if (!error) return 'Unknown error occurred';
+  if (typeof error === "string") return error;
   
-  // Check for Supabase API error format
-  if (error.error_description) return error.error_description;
-  if (error.message) return error.message;
-  if (error.error) return typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+  const pgError = error as PostgrestError;
+  if (pgError?.message) return pgError.message;
   
-  // Handle array of errors from Supabase
-  if (error.details && Array.isArray(error.details)) {
-    return error.details.map((e: any) => e.message).join(', ');
-  }
-  
-  // Last resort stringification
-  return typeof error === 'string' ? error : JSON.stringify(error);
+  return error?.error?.message || error?.error || "An unknown error occurred";
 };
 
-/**
- * Check if a user has a specific role
- */
 export const hasRole = async (userId: string, role: string): Promise<boolean> => {
-  if (!userId) return false;
-  
   try {
-    const { data, error } = await fetch(
-      `https://tzawsihjrndgmaartefg.functions.supabase.co/has-role?userId=${userId}&role=${role}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`
-        }
-      }
-    ).then(res => res.json());
-    
-    if (error) {
-      console.error('Error checking role:', error);
-      return false;
-    }
-    
+    // Use the Edge function directly
+    const { data, error } = await supabase.functions.invoke('has-role', {
+      body: { userId, role }
+    });
+
+    if (error) throw error;
     return data?.hasRole || false;
   } catch (error) {
-    console.error('Error checking role:', error);
+    console.error("Error checking role:", error);
+    // Default to false to be safe
     return false;
   }
 };

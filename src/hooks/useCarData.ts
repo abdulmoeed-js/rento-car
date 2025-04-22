@@ -31,7 +31,8 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
           toast.error("Only hosts can add or edit cars");
           navigate("/");
         }
-      } catch {
+      } catch (error) {
+        console.error("Error checking role:", error);
         toast.error("Error verifying user permissions");
         navigate("/");
       }
@@ -44,9 +45,10 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
       if (!id || !user) return;
       try {
         setIsLoading(true);
+        // Use car_images instead of images
         const { data: carData, error } = await supabase
           .from("cars")
-          .select(`*, images:car_images(*)`)
+          .select(`*, car_images(*)`)
           .eq("id", id)
           .eq("host_id", user.id)
           .single();
@@ -55,7 +57,7 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
 
         if (carData) {
           const car = carData as any;
-          const images = Array.isArray(car.images) ? car.images : [];
+          const images = Array.isArray(car.car_images) ? car.car_images : [];
           let primaryIndex = 0;
           if (images.length > 0) {
             const primaryImage = images.find((img) => img.is_primary === true);
@@ -95,6 +97,7 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
           if (onAllStepsValidated) onAllStepsValidated();
         }
       } catch (e) {
+        console.error("Error fetching car:", e);
         toast.error("Failed to load car data. Please try again.");
         navigate("/owner-portal");
       } finally {

@@ -1,32 +1,28 @@
 
-# Project ID
 project_id = "tzawsihjrndgmaartefg"
 
 [api]
-# Port to use for the API URL
-port = 8000
+enabled = true
+port = 54321
 schemas = ["public", "storage", "graphql_public"]
 
 [db]
-# Port to use for the local database URL
-port = 5432
+port = 54322
 
 [studio]
-# Port to use for Supabase Studio
-port = 8001
+port = 54323
 
 [inbucket]
-# Port for the email testing server web interface
-port = 9000
-
-[storage]
-# The maximum file size allowed (in bytes)
-file_size_limit = "50MiB"
+port = 54324
 
 [auth]
-# The site URL used for redirects and email links
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+port = 54325
+
+[storage]
+port = 54326
+
+[realtime]
+port = 54327
 
 [functions.has-role]
 verify_jwt = true

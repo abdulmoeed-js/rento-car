@@ -14,9 +14,8 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
-    const role = url.searchParams.get('role');
+    // Get the request body
+    const { userId, role } = await req.json();
 
     if (!userId || !role) {
       return new Response(
@@ -26,10 +25,10 @@ serve(async (req) => {
     }
 
     // Create a Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Query the database to check if the user has the specified role
     const { data, error } = await supabase
