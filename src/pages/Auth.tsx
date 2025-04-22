@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import AuthTabs from "@/components/AuthTabs";
 import { CarFront } from "lucide-react";
@@ -9,15 +9,21 @@ import { useNavigate } from "react-router-dom";
 const Auth: React.FC = () => {
   const { isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // If authenticated, redirect to appropriate dashboard
   useEffect(() => {
     if (user) {
-      if (user.user_role === 'host') {
-        navigate("/owner-portal");
-      } else {
-        navigate("/cars");
-      }
+      setIsRedirecting(true);
+      const timer = setTimeout(() => {
+        if (user.user_role === 'host') {
+          navigate("/owner-portal");
+        } else {
+          navigate("/cars");
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [user, navigate]);
 
@@ -36,6 +42,13 @@ const Auth: React.FC = () => {
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
             <p className="text-muted-foreground">Checking authentication...</p>
+          </div>
+        </Card>
+      ) : isRedirecting ? (
+        <Card className="w-full max-w-md p-6">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
+            <p className="text-muted-foreground">Redirecting to dashboard...</p>
           </div>
         </Card>
       ) : (

@@ -21,13 +21,15 @@ const defaultFilters: CarFilters = {
 };
 
 const CarListing = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [filters, setFilters] = useState<CarFilters>(defaultFilters);
 
-  const { data: cars = [], isLoading, refetch } = useQuery({
+  const { data: cars = [], isLoading: carsLoading, refetch } = useQuery({
     queryKey: ['cars', filters],
     queryFn: () => fetchCars(filters, 1, 24) // Fetch first page with 24 items
   });
+
+  const isLoading = authLoading || carsLoading;
 
   const handleFilterChange = (newFilters: CarFilters) => {
     setFilters(newFilters);
@@ -50,7 +52,7 @@ const CarListing = () => {
             <p className="text-muted-foreground">Find the perfect car for your next trip</p>
           </div>
           
-          {!user && (
+          {!authLoading && !user && (
             <Button asChild className="gap-2">
               <Link to="/auth">
                 <User className="h-4 w-4" />

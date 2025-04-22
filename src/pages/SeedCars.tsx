@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { CarFront, CheckCircle2 } from "lucide-react";
 
-// Updated seed car data with your provided images
+// Updated seed car data with provided images
 const seedCars = [
   {
     brand: "Honda",

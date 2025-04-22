@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useState,
@@ -16,7 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   userData: null,
   session: null,
   loading: false,
-  isLoading: false, // Alias for loading
+  isLoading: false,
   signIn: async () => {},
   signOut: async () => {},
   updateUser: async () => {},
@@ -35,8 +36,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = useState<any | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
+  // Implementation of signIn with magic link
   const signIn = async (email: string) => {
     try {
       setLoading(true);
@@ -50,6 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of signOut
   const signOut = async () => {
     try {
       setLoading(true);
@@ -64,6 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of updateUser
   const updateUser = async (data: any) => {
     try {
       setLoading(true);
@@ -77,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Implementation of additional methods
+  // Implementation of signInWithEmail
   const signInWithEmail = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -96,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of signInWithPhone
   const signInWithPhone = async (phone: string, userRole: 'renter' | 'host' = 'renter') => {
     try {
       setLoading(true);
@@ -123,6 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of verifyOtp
   const verifyOtp = async (otp: string) => {
     try {
       setLoading(true);
@@ -149,6 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of resetPassword
   const resetPassword = async (email: string) => {
     try {
       setLoading(true);
@@ -167,6 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of uploadLicense
   const uploadLicense = async (imageData: string) => {
     try {
       if (!user) throw new Error('User not authenticated');
@@ -202,9 +210,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Implementation of signUp
   const signUp = async (email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') => {
     try {
       setLoading(true);
+      console.log(`Signing up with email and role: ${userRole}`);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -217,6 +228,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         return { error: error.message };
+      }
+
+      // If signup is successful and we have a user, create a profile
+      if (data && data.user) {
+        try {
+          // Create a profile for the new user
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              user_role: userRole,
+              full_name: email.split('@')[0],
+              license_status: 'not_uploaded'
+            });
+            
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          }
+        } catch (profileErr) {
+          console.error('Failed to create profile:', profileErr);
+        }
       }
 
       return { error: null };
@@ -282,110 +314,90 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  // Fix auth initialization to prevent infinite loading
+  // Completely rewritten authentication initialization
   useEffect(() => {
-    let isActive = true;
-    let timeoutId: number | null = null;
+    console.log("Starting auth initialization...");
+    let mounted = true;
     
-    const initAuth = async () => {
-      try {
-        console.log("Starting auth initialization...");
+    // Setup a fallback timeout to prevent eternal loading state
+    const fallbackTimer = setTimeout(() => {
+      if (mounted && loading) {
+        console.log("Auth initialization timeout - forcing completion");
+        setLoading(false);
+        setAuthInitialized(true);
+      }
+    }, 3000);
+    
+    // Set up the auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log("Auth state change:", event);
         
-        // Use these variables to track state updates
-        let sessionChecked = false;
-        let listenerSet = false;
+        if (!mounted) return;
         
-        // Set up auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            console.log("Auth state change:", event);
+        if (newSession?.user) {
+          try {
+            const profile = await checkProfile(newSession.user.id);
+            const mappedUser = mapUserToModel(newSession.user, profile);
             
-            if (isActive) {
-              if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-                if (newSession?.user) {
-                  const profile = await checkProfile(newSession.user.id);
-                  const mappedUser = mapUserToModel(newSession.user, profile);
-                  
-                  setUser(mappedUser);
-                  if (profile) {
-                    setUserData({
-                      ...newSession.user,
-                      ...profile
-                    });
-                  }
-                  setSession(newSession);
-                }
-              } else if (event === 'SIGNED_OUT') {
-                setUser(null);
-                setUserData(null);
-                setSession(null);
-              }
-              
-              // Always update loading state after auth state change
-              setLoading(false);
-              setAuthChecked(true);
-              listenerSet = true;
-            }
+            setUser(mappedUser);
+            setUserData(profile);
+            setSession(newSession);
+          } catch (error) {
+            console.error("Error processing auth state change:", error);
           }
-        );
+        } else {
+          setUser(null);
+          setUserData(null);
+          setSession(null);
+        }
         
-        // Also check current session
-        const { data: sessionData } = await supabase.auth.getSession();
-        const currentSession = sessionData.session;
+        // Ensure loading is done regardless of outcome
+        setLoading(false);
+        setAuthInitialized(true);
+      }
+    );
+    
+    // Check current session
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const currentSession = data.session;
         
-        if (currentSession?.user && isActive) {
-          const profile = await checkProfile(currentSession.user.id);
-          const mappedUser = mapUserToModel(currentSession.user, profile);
-          
-          setUser(mappedUser);
-          if (profile) {
-            setUserData({
-              ...currentSession.user,
-              ...profile
-            });
+        if (!mounted) return;
+        
+        if (currentSession?.user) {
+          try {
+            const profile = await checkProfile(currentSession.user.id);
+            const mappedUser = mapUserToModel(currentSession.user, profile);
+            
+            setUser(mappedUser);
+            setUserData(profile);
+            setSession(currentSession);
+          } catch (error) {
+            console.error("Error processing session check:", error);
           }
-          setSession(currentSession);
         }
         
-        sessionChecked = true;
-        
-        // If we've checked the session and set up the listener, we can update the loading state
-        if (sessionChecked && listenerSet && isActive) {
-          setLoading(false);
-          setAuthChecked(true);
-        }
-        
-        // Safety timeout - ensure loading state resolves even if auth check fails
-        if (isActive) {
-          // Set a timeout to force-complete the loading state in case of issues
-          timeoutId = window.setTimeout(() => {
-            if (isActive && (loading || !authChecked)) {
-              console.log("Auth check timeout triggered - forcing loading state to complete");
-              setLoading(false);
-              setAuthChecked(true);
-            }
-          }, 1500); // 1.5 seconds timeout (reduced from 2s for faster response)
-        }
-        
-        return () => {
-          subscription?.unsubscribe();
-        };
+        // Always complete loading after session check
+        setLoading(false);
+        setAuthInitialized(true);
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (isActive) {
+        console.error("Error checking session:", error);
+        
+        if (mounted) {
           setLoading(false);
-          setAuthChecked(true);
+          setAuthInitialized(true);
         }
       }
     };
     
-    initAuth();
+    checkSession();
     
     return () => {
-      isActive = false; // Prevent state updates if component unmounts
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
+      mounted = false;
+      clearTimeout(fallbackTimer);
+      subscription?.unsubscribe();
     };
   }, [checkProfile]);
 
@@ -394,7 +406,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userData,
     session,
     loading,
-    isLoading: loading, // Simplified to just loading to avoid confusion
+    isLoading: loading,
     signIn,
     signOut,
     updateUser,

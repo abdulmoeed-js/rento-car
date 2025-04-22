@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CarFront, LogOut, User, Search, Plus, Calendar, MessageSquare } from "lucide-react";
@@ -11,22 +12,33 @@ const Index = () => {
   const { user, signOut, isLoading } = useAuth();
   const { unreadCount } = useChat();
   const navigate = useNavigate();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectTimerId, setRedirectTimerId] = useState<number | null>(null);
 
+  // Clear any redirect timers when component unmounts
+  useEffect(() => {
+    return () => {
+      if (redirectTimerId) {
+        clearTimeout(redirectTimerId);
+      }
+    };
+  }, [redirectTimerId]);
+
+  // Handle redirection based on user role - with safety timeouts
   useEffect(() => {
     if (!isLoading && user) {
-      setIsRedirecting(true);
-
-      // Only try to redirect if user_role exists
       const userRole = user.user_role;
-      if (userRole === "renter") {
-        navigate("/cars");
-      } else if (userRole === "host") {
-        navigate("/owner-portal");
-      } else {
-        // Default fallback
-        setIsRedirecting(false);
-      }
+      console.log("User authenticated with role:", userRole);
+      
+      // Set a timer for redirect to avoid immediate state updates causing issues
+      const timerId = window.setTimeout(() => {
+        if (userRole === "renter") {
+          navigate("/cars");
+        } else if (userRole === "host") {
+          navigate("/owner-portal");
+        }
+      }, 100);
+      
+      setRedirectTimerId(timerId);
     }
   }, [user, isLoading, navigate]);
 
@@ -46,7 +58,7 @@ const Index = () => {
     );
   }
 
-  // Not authenticated: always allow access to login screen from "/"
+  // Not authenticated: show login options
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -71,54 +83,48 @@ const Index = () => {
                 Browse Cars
               </Link>
             </Button>
+            {/* Add seed cars link for quick testing */}
+            <Button variant="ghost" className="w-full" asChild>
+              <Link to="/seed-cars">
+                <Plus className="h-5 w-5 mr-2" />
+                Seed Demo Cars
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Redirecting
-  if (isRedirecting) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2">
-            <CarFront className="h-8 w-8 text-rento-blue" />
-            <span className="font-bold text-2xl text-rento-blue">Rento</span>
-          </div>
-          <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
-          <p className="text-muted-foreground">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Default dashboard fallback (if role is invalid or not recognized)
+  // User is authenticated but not being redirected yet - show a minimal dashboard
   return (
     <div className="min-h-screen bg-white">
       <RentoHeader />
       <div className="container mx-auto p-8 flex flex-col items-center justify-center">
-        <Button
-          className="mb-4 gap-2"
-          onClick={() => user.user_role === 'host' ? navigate("/owner-portal") : navigate("/cars")}
-        >
-          {user.user_role === 'host' ? <Plus className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-          {user.user_role === 'host' ? 'Go to Owner Portal' : 'Find Cars'}
-        </Button>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => navigate("/trips")}>
-            <Calendar className="h-5 w-5" />
-            My Trips
+        <h1 className="text-2xl font-bold mb-6">Welcome, {user.full_name || 'User'}</h1>
+        <div className="flex flex-col gap-4 items-center">
+          <Button
+            className="mb-4 gap-2 w-full"
+            onClick={() => user.user_role === 'host' ? navigate("/owner-portal") : navigate("/cars")}
+          >
+            {user.user_role === 'host' ? <Plus className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+            {user.user_role === 'host' ? 'Go to Owner Portal' : 'Find Cars'}
           </Button>
-          <Button variant="outline" className="gap-2 relative" onClick={() => navigate("/chat")}>
-            <MessageSquare className="h-5 w-5" />
-            Chat
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
-                {unreadCount}
-              </Badge>
-            )}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => navigate("/trips")}>
+              <Calendar className="h-5 w-5" />
+              My Trips
+            </Button>
+            <Button variant="outline" className="gap-2 relative" onClick={() => navigate("/chat")}>
+              <MessageSquare className="h-5 w-5" />
+              Chat
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
