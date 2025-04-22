@@ -18,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: false,
   isLoading: false,
+  authInitialized: false,
   signIn: async () => {},
   signOut: async () => {},
   updateUser: async () => {},
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setUserData(null);
       setSession(null);
+      console.log("User signed out successfully");
     } catch (error) {
       console.error("Error signing out:", error);
     } finally {
@@ -85,12 +87,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log("Signing in with email:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+      console.log("Sign in successful:", data);
       return { error: null };
     } catch (error: any) {
       console.error("Login error:", error);
@@ -327,46 +331,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setAuthInitialized(true);
       }
     }, 3000);
-    
-    // Set up the auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("Auth state change:", event);
-        
-        if (!mounted) return;
-        
-        if (newSession?.user) {
-          try {
-            const profile = await checkProfile(newSession.user.id);
-            const mappedUser = mapUserToModel(newSession.user, profile);
-            
-            setUser(mappedUser);
-            setUserData(profile);
-            setSession(newSession);
-          } catch (error) {
-            console.error("Error processing auth state change:", error);
+
+    // First, setup the auth state listener
+    const setupAuthListener = () => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, newSession) => {
+          console.log("Auth state change:", event);
+          
+          if (!mounted) return;
+          
+          if (newSession?.user) {
+            try {
+              console.log("Auth state change: User found", newSession.user);
+              const profile = await checkProfile(newSession.user.id);
+              const mappedUser = mapUserToModel(newSession.user, profile);
+              
+              setUser(mappedUser);
+              setUserData(profile);
+              setSession(newSession);
+            } catch (error) {
+              console.error("Error processing auth state change:", error);
+            }
+          } else {
+            console.log("Auth state change: No user");
+            setUser(null);
+            setUserData(null);
+            setSession(null);
           }
-        } else {
-          setUser(null);
-          setUserData(null);
-          setSession(null);
+          
+          // Ensure loading is done regardless of outcome
+          setLoading(false);
+          setAuthInitialized(true);
         }
-        
-        // Ensure loading is done regardless of outcome
-        setLoading(false);
-        setAuthInitialized(true);
-      }
-    );
+      );
+      
+      return subscription;
+    };
     
-    // Check current session
-    const checkSession = async () => {
+    // Then, check current session
+    const checkCurrentSession = async () => {
       try {
+        console.log("Checking current session...");
         const { data } = await supabase.auth.getSession();
         const currentSession = data.session;
         
         if (!mounted) return;
         
         if (currentSession?.user) {
+          console.log("Current session: User found", currentSession.user);
           try {
             const profile = await checkProfile(currentSession.user.id);
             const mappedUser = mapUserToModel(currentSession.user, profile);
@@ -377,6 +389,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } catch (error) {
             console.error("Error processing session check:", error);
           }
+        } else {
+          console.log("Current session: No user");
         }
         
         // Always complete loading after session check
@@ -392,7 +406,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
     
-    checkSession();
+    // Set up auth listener first, then check session
+    const subscription = setupAuthListener();
+    checkCurrentSession();
     
     return () => {
       mounted = false;
@@ -407,6 +423,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     session,
     loading,
     isLoading: loading,
+    authInitialized,
     signIn,
     signOut,
     updateUser,

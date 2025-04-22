@@ -5,16 +5,19 @@ import AuthTabs from "@/components/AuthTabs";
 import { CarFront } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Auth: React.FC = () => {
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, authInitialized } = useAuth();
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
   
   // If authenticated, redirect to appropriate dashboard
   useEffect(() => {
-    if (user) {
+    if (authInitialized && user) {
+      console.log("Auth page: User authenticated, redirecting", user);
       setIsRedirecting(true);
+      
       const timer = setTimeout(() => {
         if (user.user_role === 'host') {
           navigate("/owner-portal");
@@ -25,7 +28,7 @@ const Auth: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [user, navigate]);
+  }, [user, authInitialized, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rento-lightblue to-white flex flex-col justify-center items-center p-4">

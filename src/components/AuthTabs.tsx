@@ -9,14 +9,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const AuthTabs: React.FC = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, authInitialized } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
   const [showOtpForm, setShowOtpForm] = useState<boolean>(false);
   const [showResetForm, setShowResetForm] = useState<boolean>(false);
   const navigate = useNavigate();
 
   // If still loading auth state, don't render anything yet
-  if (isLoading) return null;
+  if (!authInitialized) return null;
 
   // If authenticated, redirect to appropriate dashboard based on user role
   if (user) {

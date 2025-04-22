@@ -16,6 +16,7 @@ export interface AuthContextType {
   session: any | null;
   loading: boolean;
   isLoading: boolean; // Alias for loading
+  authInitialized: boolean; // New property to track initialization completion
   signIn: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUser: (data: any) => Promise<void>;
