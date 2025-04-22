@@ -19,6 +19,8 @@ import CarAvailabilityForm from "@/components/owner/CarAvailabilityForm";
 import CarPickupForm from "@/components/owner/CarPickupForm";
 import CarReviewForm from "@/components/owner/CarReviewForm";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCarManagement } from "@/hooks/useCarManagement";
+import { hasRole } from "@/utils/supabaseHelpers";
 
 const formSteps: FormStep[] = [
   'details',
@@ -44,9 +46,8 @@ const AddEditCar = () => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState<FormStep>('details');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [validatedSteps, setValidatedSteps] = useState<Set<FormStep>>(new Set());
+  const { saveCar, isSubmitting, uploadProgress } = useCarManagement(id);
   const [formData, setFormData] = useState<Partial<CarFormData>>({
     brand: '',
     model: '',
@@ -71,14 +72,27 @@ const AddEditCar = () => {
   
   // Redirect if not logged in or not a host
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    } else if (user.user_role !== 'host') {
-      toast.error("Only hosts can add or edit cars");
-      navigate("/");
-      return;
-    }
+    const checkUserRole = async () => {
+      if (!user) {
+        toast.error("You need to be logged in");
+        navigate("/auth");
+        return;
+      }
+      
+      try {
+        const isUserHost = await hasRole(user.id, 'host');
+        if (!isUserHost) {
+          toast.error("Only hosts can add or edit cars");
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Error checking user role:", error);
+        toast.error("Error verifying user permissions");
+        navigate("/");
+      }
+    };
+    
+    checkUserRole();
   }, [user, navigate]);
 
   // Fetch car data if editing
@@ -212,164 +226,9 @@ const AddEditCar = () => {
       return;
     }
     
-    try {
-      setIsSubmitting(true);
-      
-      // Ensure bucket exists
-      const { error: bucketError } = await supabase.storage
-        .getBucket('car_images');
-      
-      if (bucketError && bucketError.message.includes('does not exist')) {
-        console.warn('Bucket does not exist, but should have been created by migration');
-      }
-      
-      // Prepare car data for database
-      const carData = {
-        brand: formData.brand,
-        model: formData.model,
-        year: formData.year,
-        transmission: formData.transmission,
-        fuel_type: formData.fuel_type,
-        doors: formData.doors,
-        has_ac: formData.has_ac,
-        license_plate: formData.license_plate,
-        car_type: formData.car_type,
-        price_per_day: formData.price_per_day,
-        multi_day_discount: formData.multi_day_discount,
-        cancellation_policy: formData.cancellation_policy,
-        available_days: formData.available_days,
-        available_hours: formData.available_hours,
-        custom_availability: formData.custom_availability ? 
-          formData.custom_availability.map(date => ({
-            date: date.date instanceof Date ? 
-              date.date.toISOString().split('T')[0] : 
-              date.date,
-            available: date.available
-          })) : 
-          null,
-        location: formData.location,
-        location_coordinates: formData.location_coordinates,
-        pickup_instructions: formData.pickup_instructions,
-        description: formData.description,
-        host_id: user.id
-      };
-      
-      console.log("Submitting car data:", carData);
-      
-      let carId = id;
-      
-      // Insert or update car record
-      if (id) {
-        // Update existing car
-        const { error } = await supabase
-          .from('cars')
-          .update(carData)
-          .eq('id', id)
-          .eq('host_id', user.id);
-          
-        if (error) {
-          console.error("Error updating car:", error);
-          throw error;
-        }
-      } else {
-        // Insert new car
-        const { data, error } = await supabase
-          .from('cars')
-          .insert(carData)
-          .select('id')
-          .single();
-          
-        if (error) {
-          console.error("Error inserting car:", error);
-          throw error;
-        }
-        
-        if (!data || !data.id) {
-          throw new Error("Failed to get car ID after insertion");
-        }
-        
-        carId = data.id;
-      }
-      
-      console.log("Car saved with ID:", carId);
-      
-      // Handle image uploads
-      if (formData.images && formData.images.length > 0) {
-        for (let i = 0; i < formData.images.length; i++) {
-          const file = formData.images[i];
-          const isPrimary = i === (formData.primaryImageIndex || 0) - (formData.existingImages?.length || 0);
-          const fileName = `${carId}/${Date.now()}-${file.name}`;
-          
-          console.log("Uploading image:", fileName, "Primary:", isPrimary);
-          
-          // Upload image to storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('car_images')
-            .upload(fileName, file);
-            
-          if (uploadError) {
-            console.error("Error uploading image:", uploadError);
-            throw uploadError;
-          }
-          
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('car_images')
-            .getPublicUrl(fileName);
-            
-          console.log("Image uploaded with URL:", publicUrl);
-          
-          // Create image record
-          const { error: insertError } = await supabase
-            .from('car_images')
-            .insert({
-              car_id: carId,
-              image_path: publicUrl,
-              is_primary: isPrimary
-            });
-            
-          if (insertError) {
-            console.error("Error inserting image record:", insertError);
-            throw insertError;
-          }
-          
-          // Update upload progress
-          setUploadProgress(Math.round(((i + 1) / formData.images.length) * 100));
-        }
-      }
-      
-      // Update primary image if changed with existing images
-      if (formData.existingImages && formData.existingImages.length > 0 && formData.primaryImageIndex !== undefined) {
-        const primaryIndex = formData.primaryImageIndex;
-        if (primaryIndex < formData.existingImages.length && formData.existingImages[primaryIndex]) {
-          const primaryImageId = formData.existingImages[primaryIndex].id;
-          
-          if (primaryImageId) {
-            console.log("Setting primary image ID:", primaryImageId);
-            
-            // Reset all to non-primary
-            await supabase
-              .from('car_images')
-              .update({ is_primary: false })
-              .eq('car_id', carId);
-              
-            // Set selected as primary
-            await supabase
-              .from('car_images')
-              .update({ is_primary: true })
-              .eq('id', primaryImageId);
-          }
-        }
-      }
-      
-      toast.success(id ? 'Car updated successfully!' : 'Car added successfully!');
+    const success = await saveCar(formData, user.id);
+    if (success) {
       navigate('/owner-portal');
-    } catch (error: any) {
-      console.error('Error submitting car:', error);
-      toast.error(`Failed to save car: ${error.message || 'Please try again'}`);
-    } finally {
-      setIsSubmitting(false);
-      setUploadProgress(0);
     }
   };
 

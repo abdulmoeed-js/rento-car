@@ -20,6 +20,13 @@ export const useCarManagement = (carId?: string) => {
     try {
       setIsSubmitting(true);
       
+      // First, verify user has host role
+      const isHost = await hasRole(userId, 'host');
+      if (!isHost) {
+        toast.error("Only hosts can add or edit cars. Please contact support if you believe this is an error.");
+        return false;
+      }
+      
       // Prepare car data for database
       const carData = {
         brand: formData.brand,
@@ -92,13 +99,15 @@ export const useCarManagement = (carId?: string) => {
       
       // Ensure the car_images bucket exists before uploading
       try {
-        const { data: bucketExists } = await supabase.storage.getBucket('car_images');
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === 'car_images');
+        
         if (!bucketExists) {
-          console.log("Car images bucket doesn't exist, attempting to create");
+          console.warn("Car images bucket doesn't exist, attempting to create");
           await supabase.storage.createBucket('car_images', { public: true });
         }
       } catch (error) {
-        console.log("Storage bucket check error (continuing anyway):", error);
+        console.warn("Storage bucket check error (continuing anyway):", error);
         // Continue anyway as the bucket might exist despite the error
       }
       
@@ -214,3 +223,4 @@ export const useCarManagement = (carId?: string) => {
     uploadProgress
   };
 };
+
