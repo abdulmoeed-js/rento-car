@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -78,16 +77,20 @@ const SeedCars = () => {
   // Fetch any available host user to link as host_id, fallback to null.
   // You may want to use a real host id in your prod data!
   const getAnyHostId = async (): Promise<string | null> => {
+    // Instead of using user_roles table with the enum type,
+    // we'll check the profiles table where user_role is stored as text
     const { data, error } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "host")
+      .from("profiles")
+      .select("id")
+      .eq("user_role", "host")
       .limit(1)
       .single();
+    
     if (error) {
+      console.error("Error fetching host:", error);
       return null;
     }
-    return data?.user_id || null;
+    return data?.id || null;
   };
 
   const handleSeed = async () => {
