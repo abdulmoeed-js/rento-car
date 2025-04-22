@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CarFront, LogOut, User, Search, Plus, Calendar, MessageSquare } from "lucide-react";
@@ -15,26 +14,23 @@ const Index = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    // Only attempt to redirect if authentication check is complete and user is logged in
     if (!isLoading && user) {
       setIsRedirecting(true);
-      
-      // Redirect based on user role
-      const redirectTimer = setTimeout(() => {
-        const userRole = user.user_role || 'renter';
-        
-        if (userRole === 'renter') {
-          navigate("/cars");
-        } else if (userRole === 'host') {
-          navigate("/owner-portal");
-        }
-      }, 100);
-      
-      return () => clearTimeout(redirectTimer);
+
+      // Only try to redirect if user_role exists
+      const userRole = user.user_role;
+      if (userRole === "renter") {
+        navigate("/cars");
+      } else if (userRole === "host") {
+        navigate("/owner-portal");
+      } else {
+        // Default fallback
+        setIsRedirecting(false);
+      }
     }
   }, [user, isLoading, navigate]);
 
-  // If still checking authentication, show a loading state
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -50,7 +46,7 @@ const Index = () => {
     );
   }
 
-  // If not authenticated, show login option with prominent buttons
+  // Not authenticated: always allow access to login screen from "/"
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -60,15 +56,15 @@ const Index = () => {
             <span className="font-bold text-3xl text-rento-blue">Rento</span>
           </div>
           <p className="text-muted-foreground mb-4">Drive anywhere, anytime</p>
-          
           <div className="flex flex-col w-full gap-3 max-w-xs">
+            {/* Direct user to auth page for login/sign up */}
             <Button size="lg" className="gap-2 w-full" asChild>
               <Link to="/auth">
                 <User className="h-5 w-5" />
                 Sign In / Sign Up
               </Link>
             </Button>
-            
+            {/* Also allow to browse cars as guest */}
             <Button variant="outline" className="w-full" asChild>
               <Link to="/cars">
                 <Search className="h-5 w-5 mr-2" />
@@ -81,7 +77,7 @@ const Index = () => {
     );
   }
 
-  // Show redirecting state when about to navigate away
+  // Redirecting
   if (isRedirecting) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -97,35 +93,24 @@ const Index = () => {
     );
   }
 
-  // Default dashboard content (fallback, if redirection doesn't happen)
+  // Default dashboard fallback (if role is invalid or not recognized)
   return (
     <div className="min-h-screen bg-white">
       <RentoHeader />
-      
       <div className="container mx-auto p-8 flex flex-col items-center justify-center">
-        <Button 
-          className="mb-4 gap-2" 
+        <Button
+          className="mb-4 gap-2"
           onClick={() => user.user_role === 'host' ? navigate("/owner-portal") : navigate("/cars")}
         >
           {user.user_role === 'host' ? <Plus className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           {user.user_role === 'host' ? 'Go to Owner Portal' : 'Find Cars'}
         </Button>
-        
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => navigate("/trips")}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => navigate("/trips")}>
             <Calendar className="h-5 w-5" />
             My Trips
           </Button>
-          
-          <Button 
-            variant="outline" 
-            className="gap-2 relative"
-            onClick={() => navigate("/chat")}
-          >
+          <Button variant="outline" className="gap-2 relative" onClick={() => navigate("/chat")}>
             <MessageSquare className="h-5 w-5" />
             Chat
             {unreadCount > 0 && (

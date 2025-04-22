@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,58 +6,58 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { CarFront, CheckCircle2 } from "lucide-react";
 
-// Fixed seed data for the cars
+// Updated seed car data with your provided images
 const seedCars = [
   {
-    brand: "Toyota",
-    model: "Corolla",
-    year: 2020,
+    brand: "Honda",
+    model: "City White",
+    year: 2023,
     transmission: "automatic",
-    fuel_type: "hybrid",
+    fuel_type: "petrol",
     car_type: "sedan",
     doors: 4,
     has_ac: true,
-    license_plate: "ABC123",
-    price_per_day: 45,
+    license_plate: "HONCITY1",
+    price_per_day: 60,
     multi_day_discount: 10,
     cancellation_policy: "moderate",
-    location: "New York City, NY",
-    description: "Reliable and fuel-efficient Toyota Corolla, perfect for city driving.",
-    image_url: "/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png"
+    location: "Mumbai, India",
+    description: "Reliable and modern Honda City in white.",
+    image_url: "/lovable-uploads/131a7757-44a1-4dd4-91b6-fae86461ba97.png"
   },
   {
-    brand: "Ford",
-    model: "Mustang",
+    brand: "Honda",
+    model: "City Silver",
     year: 2022,
     transmission: "automatic",
-    fuel_type: "gasoline",
-    car_type: "sports",
-    doors: 2,
-    has_ac: true,
-    license_plate: "FAST42",
-    price_per_day: 89,
-    multi_day_discount: 5,
-    cancellation_policy: "strict",
-    location: "Los Angeles, CA",
-    description: "Experience the thrill of driving a Ford Mustang with powerful engine and stylish design.",
-    image_url: "/lovable-uploads/c5b96ea5-bb51-49f4-a371-d60c2e57c514.png"
-  },
-  {
-    brand: "Tesla",
-    model: "Model 3",
-    year: 2021,
-    transmission: "automatic",
-    fuel_type: "electric",
+    fuel_type: "petrol",
     car_type: "sedan",
     doors: 4,
     has_ac: true,
-    license_plate: "ELCTR1",
-    price_per_day: 95,
+    license_plate: "HONCITY2",
+    price_per_day: 65,
     multi_day_discount: 15,
     cancellation_policy: "flexible",
-    location: "San Francisco, CA",
-    description: "Zero-emission Tesla Model 3 with cutting-edge technology and impressive driving range.",
-    image_url: "/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png"
+    location: "Delhi, India",
+    description: "Honda City in silver, new and fuel efficient for city drives.",
+    image_url: "/lovable-uploads/37ae671a-8785-4a32-a8cb-6c8c2a702045.png"
+  },
+  {
+    brand: "Honda",
+    model: "City Blue",
+    year: 2023,
+    transmission: "automatic",
+    fuel_type: "petrol",
+    car_type: "sedan",
+    doors: 4,
+    has_ac: true,
+    license_plate: "HONCITY3",
+    price_per_day: 70,
+    multi_day_discount: 20,
+    cancellation_policy: "strict",
+    location: "Bangalore, India",
+    description: "Blue Honda City with premium features and sporty look.",
+    image_url: "/lovable-uploads/87228688-d8c5-4b5e-a804-c3ed3c810a88.png"
   }
 ];
 
@@ -79,8 +78,8 @@ const SeedCars = () => {
     try {
       // Find a host user to associate the cars with
       addLog("Looking for a host user...");
-      
-      // First check in profiles table for a user with user_role = 'host'
+
+      // Fix: Update the lookup role string to match 'host'
       const { data: hostProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id')
@@ -92,15 +91,15 @@ const SeedCars = () => {
       }
 
       let hostId;
-      
+
       if (hostProfiles && hostProfiles.length > 0) {
         hostId = hostProfiles[0].id;
         addLog(`Found existing host with ID: ${hostId}`);
       } else {
-        // If no host found, create a new user
+        // If no host found, create a new host user...
         addLog("No host found. Creating a new host user...");
-        
-        // Create a new host user
+        // Note: We need to set profile with user_role = host after signup
+
         const { data: newUser, error: createUserError } = await supabase.auth.signUp({
           email: `host-${Date.now()}@example.com`,
           password: 'password123',
@@ -120,7 +119,7 @@ const SeedCars = () => {
         }
 
         hostId = newUser.user.id;
-        
+
         // Create profile for the new host
         const { error: profileError } = await supabase
           .from('profiles')
@@ -134,15 +133,14 @@ const SeedCars = () => {
         if (profileError) {
           throw new Error(`Error creating host profile: ${profileError.message}`);
         }
-        
+
         addLog(`Created new host with ID: ${hostId}`);
       }
 
       // Insert cars one by one
       addLog("Adding cars to the database...");
-      
+
       for (const car of seedCars) {
-        // Insert car data
         const { data: carData, error: carError } = await supabase
           .from('cars')
           .insert({
