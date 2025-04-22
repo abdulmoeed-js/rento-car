@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -113,14 +112,18 @@ const OwnerPortal = () => {
           const primaryImage = carImages.find(img => img.is_primary);
           
           // Parse available_hours from JSON to the expected structure
-          const availableHours = car.available_hours ? {
-            start: typeof car.available_hours === 'object' && car.available_hours.start 
-              ? String(car.available_hours.start) 
-              : '08:00',
-            end: typeof car.available_hours === 'object' && car.available_hours.end 
-              ? String(car.available_hours.end) 
-              : '20:00'
-          } : { start: '08:00', end: '20:00' };
+          let availableHours = { start: '08:00', end: '20:00' };
+          
+          // Check if available_hours exists and is an object (not an array)
+          if (car.available_hours && typeof car.available_hours === 'object' && !Array.isArray(car.available_hours)) {
+            const hoursObj = car.available_hours as Record<string, any>;
+            if ('start' in hoursObj) {
+              availableHours.start = String(hoursObj.start);
+            }
+            if ('end' in hoursObj) {
+              availableHours.end = String(hoursObj.end);
+            }
+          }
           
           return {
             ...car,

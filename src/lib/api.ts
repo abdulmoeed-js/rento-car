@@ -68,14 +68,18 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
       const primaryImage = carImages.find(img => img.is_primary);
       
       // Properly parse available_hours from JSON
-      const availableHours = car.available_hours ? {
-        start: typeof car.available_hours === 'object' && car.available_hours.start 
-          ? String(car.available_hours.start) 
-          : '08:00',
-        end: typeof car.available_hours === 'object' && car.available_hours.end 
-          ? String(car.available_hours.end) 
-          : '20:00'
-      } : { start: '08:00', end: '20:00' };
+      let availableHours = { start: '08:00', end: '20:00' };
+      
+      // Check if available_hours exists and is an object (not an array)
+      if (car.available_hours && typeof car.available_hours === 'object' && !Array.isArray(car.available_hours)) {
+        const hoursObj = car.available_hours as Record<string, any>;
+        if ('start' in hoursObj) {
+          availableHours.start = String(hoursObj.start);
+        }
+        if ('end' in hoursObj) {
+          availableHours.end = String(hoursObj.end);
+        }
+      }
       
       return {
         ...(car as any),
@@ -121,14 +125,18 @@ export const getCarById = async (id: string): Promise<Car | null> => {
     const primaryImage = carImages.find(img => img.is_primary);
     
     // Properly parse available_hours from JSON
-    const availableHours = data.available_hours ? {
-      start: typeof data.available_hours === 'object' && data.available_hours.start 
-        ? String(data.available_hours.start) 
-        : '08:00',
-      end: typeof data.available_hours === 'object' && data.available_hours.end 
-        ? String(data.available_hours.end) 
-        : '20:00'
-    } : { start: '08:00', end: '20:00' };
+    let availableHours = { start: '08:00', end: '20:00' };
+    
+    // Check if available_hours exists and is an object (not an array)
+    if (data.available_hours && typeof data.available_hours === 'object' && !Array.isArray(data.available_hours)) {
+      const hoursObj = data.available_hours as Record<string, any>;
+      if ('start' in hoursObj) {
+        availableHours.start = String(hoursObj.start);
+      }
+      if ('end' in hoursObj) {
+        availableHours.end = String(hoursObj.end);
+      }
+    }
     
     // Add placeholder host_rating for compatibility
     return {
