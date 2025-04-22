@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useState,
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = useState<any | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const signIn = async (email: string) => {
     try {
@@ -281,57 +283,84 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  // Enhanced init function to create profile if needed and use our mapping function
+  // Enhanced init function with timeout safeguard
   useEffect(() => {
+    let isActive = true; // Track if component is still mounted
+    
     const initAuth = async () => {
       try {
-        setLoading(true);
+        console.log("Starting auth initialization...");
         
-        // Set up auth listener
+        // Set up auth listener first
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
+            console.log("Auth state change:", event);
+            
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
               if (session?.user) {
                 const profile = await checkProfile(session.user.id);
-                
-                // Use our mapping function to create a consistent User object
                 const mappedUser = mapUserToModel(session.user, profile);
-                setUser(mappedUser);
                 
-                if (profile) {
-                  setUserData({
-                    ...session.user,
-                    ...profile
-                  });
+                if (isActive) {
+                  setUser(mappedUser);
+                  if (profile) {
+                    setUserData({
+                      ...session.user,
+                      ...profile
+                    });
+                  }
+                  setSession(session);
                 }
               }
             } else if (event === 'SIGNED_OUT') {
-              setUser(null);
-              setUserData(null);
-              setSession(null);
+              if (isActive) {
+                setUser(null);
+                setUserData(null);
+                setSession(null);
+              }
             }
             
-            setSession(session);
+            // Always ensure loading is set to false after auth state change
+            if (isActive) {
+              setLoading(false);
+              setAuthChecked(true);
+            }
           }
         );
         
-        // Check current session
+        // Also check current session as a fallback
         const { data: sessionData } = await supabase.auth.getSession();
         const currentSession = sessionData.session;
         
         if (currentSession?.user) {
           const profile = await checkProfile(currentSession.user.id);
-          
-          // Use our mapping function here as well
           const mappedUser = mapUserToModel(currentSession.user, profile);
-          setUser(mappedUser);
           
-          if (profile) {
-            setUserData({
-              ...currentSession.user,
-              ...profile
-            });
+          if (isActive) {
+            setUser(mappedUser);
+            if (profile) {
+              setUserData({
+                ...currentSession.user,
+                ...profile
+              });
+            }
+            setSession(currentSession);
           }
+        }
+        
+        // Safety timeout to ensure loading state always resolves
+        setTimeout(() => {
+          if (isActive && loading) {
+            console.log("Auth check timeout reached - forcing loading state to false");
+            setLoading(false);
+            setAuthChecked(true);
+          }
+        }, 3000);
+        
+        // Always make sure to update loading state
+        if (isActive) {
+          setLoading(false);
+          setAuthChecked(true);
         }
         
         return () => {
@@ -339,20 +368,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
       } catch (error) {
         console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+          setAuthChecked(true);
+        }
       }
     };
     
     initAuth();
-  }, [checkProfile]);
+    
+    return () => {
+      isActive = false; // Prevent state updates if component unmounts
+    };
+  }, [checkProfile, loading]);
 
   const value = {
     user,
     userData,
     session,
     loading,
-    isLoading: loading, // Alias for loading
+    isLoading: loading || !authChecked, // Consider initialization incomplete until both loading is false and auth check has completed
     signIn,
     signOut,
     updateUser,

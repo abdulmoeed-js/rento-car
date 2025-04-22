@@ -45,6 +45,7 @@ const Index = () => {
           </div>
           <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
           <p className="text-muted-foreground">Checking authentication...</p>
+          <p className="text-xs text-muted-foreground mt-2">If this takes too long, try refreshing the page.</p>
         </div>
       </div>
     );
