@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -49,17 +50,20 @@ const OwnerPortal = () => {
       try {
         setLoading(true);
         
-        // Fetch cars
+        // Fetch cars - using car_images instead of images
         const { data: carsData, error: carsError } = await supabase
           .from('cars')
           .select(`
             *,
-            images (*),
+            car_images (*),
             bookings (*)
           `)
           .eq('host_id', user.id);
           
-        if (carsError) throw carsError;
+        if (carsError) {
+          console.error("Error fetching cars:", carsError);
+          throw carsError;
+        }
         
         // Fetch bookings
         const carIds = carsData?.map(car => car.id) || [];
@@ -75,7 +79,10 @@ const OwnerPortal = () => {
             `)
             .in('car_id', carIds);
             
-          if (bookingsError) throw bookingsError;
+          if (bookingsError) {
+            console.error("Error fetching bookings:", bookingsError);
+            throw bookingsError;
+          }
           
           // Process bookings to ensure they match the Booking type
           allBookings = bookingsData ? bookingsData.map(booking => {
@@ -100,9 +107,15 @@ const OwnerPortal = () => {
         
         // Process cars to ensure they match the Car type
         const processedCars = carsData ? carsData.map(car => {
+          // Safely handle car.car_images with proper type checking
+          const carImagesData = car.car_images;
+          const carImages = Array.isArray(carImagesData) ? carImagesData : [];
+          const primaryImage = carImages.find(img => img.is_primary);
+          
           return {
             ...car,
-            images: Array.isArray(car.images) ? car.images : [],
+            image_url: primaryImage?.image_path || (carImages.length > 0 ? carImages[0].image_path : ''),
+            images: carImages, // Maintain compatibility with the Car type
             bookings: Array.isArray(car.bookings) ? car.bookings : []
           } as Car;
         }) : [];

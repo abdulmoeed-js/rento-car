@@ -40,26 +40,26 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Query the database to check if the user has the specified role
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('role', role)
+    // Instead of using the enum value directly, check the text value from profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_role')
+      .eq('id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-      console.error('Database error:', error);
+    if (profileError) {
+      console.error('Error checking profile role:', profileError);
       return new Response(
-        JSON.stringify({ error: 'Database error', details: error }),
+        JSON.stringify({ error: 'Could not check user profile', details: profileError }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
-    console.log("Role check result:", !!data);
+    const hasRole = profileData?.user_role === role;
+    console.log("User role from profile:", profileData?.user_role, "Requested role:", role, "Result:", hasRole);
     
     return new Response(
-      JSON.stringify({ hasRole: !!data }),
+      JSON.stringify({ hasRole }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

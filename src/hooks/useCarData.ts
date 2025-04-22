@@ -45,7 +45,7 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
       if (!id || !user) return;
       try {
         setIsLoading(true);
-        // Use car_images instead of images
+        
         const { data: carData, error } = await supabase
           .from("cars")
           .select(`*, car_images(*)`)
