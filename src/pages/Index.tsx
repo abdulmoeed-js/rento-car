@@ -50,7 +50,7 @@ const Index = () => {
     );
   }
 
-  // If not authenticated, show login option
+  // If not authenticated, show login option with prominent buttons
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -61,19 +61,21 @@ const Index = () => {
           </div>
           <p className="text-muted-foreground mb-4">Drive anywhere, anytime</p>
           
-          <Button size="lg" className="gap-2" asChild>
-            <Link to="/auth">
-              <User className="h-5 w-5" />
-              Sign In / Sign Up
-            </Link>
-          </Button>
-          
-          <Button variant="outline" className="mt-2" asChild>
-            <Link to="/cars">
-              <Search className="h-5 w-5 mr-2" />
-              Browse Cars
-            </Link>
-          </Button>
+          <div className="flex flex-col w-full gap-3 max-w-xs">
+            <Button size="lg" className="gap-2 w-full" asChild>
+              <Link to="/auth">
+                <User className="h-5 w-5" />
+                Sign In / Sign Up
+              </Link>
+            </Button>
+            
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/cars">
+                <Search className="h-5 w-5 mr-2" />
+                Browse Cars
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     );

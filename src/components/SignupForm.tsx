@@ -25,9 +25,11 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
     setEmailError(null);
     
     try {
+      console.log("Signing up with role:", userRole);
       const { error } = await signUp(email, password, undefined, userRole);
       if (error) {
         setEmailError(error);
+        console.error("Signup error:", error);
       } else {
         toast.success("Account created successfully! Please log in.");
       }
@@ -41,9 +43,11 @@ const SignupForm: React.FC<SignupFormProps> = ({ onPhoneSubmit }) => {
     setPhoneError(null);
     
     try {
+      console.log("Signing up with phone for role:", userRole);
       const { error } = await signInWithPhone(phone, userRole);
       if (error) {
         setPhoneError(error);
+        console.error("Phone signup error:", error);
       } else {
         onPhoneSubmit();
       }

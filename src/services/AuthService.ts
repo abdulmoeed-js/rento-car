@@ -28,6 +28,8 @@ export const getUserProfile = async (userId: string) => {
 // Helper function to create user profile
 export const createUserProfile = async (userId: string, userRole: 'renter' | 'host' = 'renter', fullName: string = '') => {
   try {
+    console.log(`Creating profile for user ${userId} with role ${userRole}`);
+    
     // Check if profile already exists to prevent duplicate inserts
     const { data: existingProfile } = await supabase
       .from('profiles')
@@ -37,6 +39,7 @@ export const createUserProfile = async (userId: string, userRole: 'renter' | 'ho
       
     if (existingProfile) {
       // Profile already exists, just update it
+      console.log('Profile exists, updating it');
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -54,6 +57,7 @@ export const createUserProfile = async (userId: string, userRole: 'renter' | 'ho
     }
     
     // Profile doesn't exist, create a new one
+    console.log('Creating new profile');
     const { error } = await supabase
       .from('profiles')
       .insert({
@@ -68,6 +72,7 @@ export const createUserProfile = async (userId: string, userRole: 'renter' | 'ho
       return false;
     }
     
+    console.log(`Profile created successfully with role ${userRole}`);
     return true;
   } catch (err) {
     console.error('Error in createUserProfile function:', err);
@@ -77,6 +82,8 @@ export const createUserProfile = async (userId: string, userRole: 'renter' | 'ho
 
 export const signUpWithEmail = async (email: string, password: string, full_name: string, user_role: 'renter' | 'host' = 'renter') => {
   try {
+    console.log(`Signing up with email and role ${user_role}`);
+    
     // Create the user in Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -124,6 +131,8 @@ export const signUpWithEmail = async (email: string, password: string, full_name
 // Alias for signUpWithEmail for compatibility
 export const signUp = async (email: string, password: string, phone?: string, userRole: 'renter' | 'host' = 'renter') => {
   try {
+    console.log(`Sign up called with role: ${userRole}`);
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

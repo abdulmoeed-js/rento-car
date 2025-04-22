@@ -1,214 +1,265 @@
+
 import React, { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { CarFront, CheckCircle2 } from "lucide-react";
 
-interface CarSeed {
-  brand: string;
-  model: string;
-  year: number;
-  location: string;
-  price_per_day: number;
-  car_type: string;
-  fuel_type: string;
-  transmission: string;
-  doors: number;
-  has_ac: boolean;
-  license_plate: string;
-  description: string;
-  images: { url: string }[];
-}
-
-// Use some randomized/hardcoded values for demo
-const demoCars: CarSeed[] = [
+// Fixed seed data for the cars
+const seedCars = [
   {
-    brand: "Honda",
-    model: "City Aspire",
+    brand: "Toyota",
+    model: "Corolla",
+    year: 2020,
+    transmission: "automatic",
+    fuel_type: "hybrid",
+    car_type: "sedan",
+    doors: 4,
+    has_ac: true,
+    license_plate: "ABC123",
+    price_per_day: 45,
+    multi_day_discount: 10,
+    cancellation_policy: "moderate",
+    location: "New York City, NY",
+    description: "Reliable and fuel-efficient Toyota Corolla, perfect for city driving.",
+    image_url: "/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png"
+  },
+  {
+    brand: "Ford",
+    model: "Mustang",
     year: 2022,
-    location: "Karachi",
-    price_per_day: 8000,
-    car_type: "sedan",
-    fuel_type: "gasoline",
     transmission: "automatic",
-    doors: 4,
+    fuel_type: "gasoline",
+    car_type: "sports",
+    doors: 2,
     has_ac: true,
-    license_plate: "ABC-123",
-    description: "Spacious Honda City Aspire 2022 auto. Immaculately maintained. Great city ride!",
-    images: [{ url: "/public/lovable-uploads/c5b96ea5-bb51-49f4-a371-d60c2e57c514.png" }],
+    license_plate: "FAST42",
+    price_per_day: 89,
+    multi_day_discount: 5,
+    cancellation_policy: "strict",
+    location: "Los Angeles, CA",
+    description: "Experience the thrill of driving a Ford Mustang with powerful engine and stylish design.",
+    image_url: "/lovable-uploads/c5b96ea5-bb51-49f4-a371-d60c2e57c514.png"
   },
   {
-    brand: "Honda",
-    model: "City Silver",
-    year: 2023,
-    location: "Lahore",
-    price_per_day: 8500,
-    car_type: "sedan",
-    fuel_type: "gasoline",
+    brand: "Tesla",
+    model: "Model 3",
+    year: 2021,
     transmission: "automatic",
+    fuel_type: "electric",
+    car_type: "sedan",
     doors: 4,
     has_ac: true,
-    license_plate: "XYZ-789",
-    description: "2023 Honda City in silver, smooth automatic and premium comfort, ideal for family trips.",
-    images: [{ url: "/public/lovable-uploads/58943a57-48c0-8409-853692f63f3c.png" }],
-  },
-  {
-    brand: "Honda",
-    model: "City Blue",
-    year: 2024,
-    location: "Islamabad",
-    price_per_day: 9500,
-    car_type: "sedan",
-    fuel_type: "gasoline",
-    transmission: "automatic",
-    doors: 4,
-    has_ac: true,
-    license_plate: "LMN-456",
-    description: "Brand new 2024 Honda City Blue. Top model, city and highway friendly with advanced features.",
-    images: [{ url: "/public/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png" }],
-  },
+    license_plate: "ELCTR1",
+    price_per_day: 95,
+    multi_day_discount: 15,
+    cancellation_policy: "flexible",
+    location: "San Francisco, CA",
+    description: "Zero-emission Tesla Model 3 with cutting-edge technology and impressive driving range.",
+    image_url: "/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png"
+  }
 ];
 
-// WARNING: This page should be accessible to devs/admins only! Remove after seeding.
-
 const SeedCars = () => {
-  const [loading, setLoading] = useState(false);
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  const navigate = useNavigate();
 
-  // Fetch any available host user to link as host_id, fallback to null.
-  // You may want to use a real host id in your prod data!
-  const getAnyHostId = async (): Promise<string | null> => {
-    // Instead of using user_roles table with the enum type,
-    // we'll check the profiles table where user_role is stored as text
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_role", "host")
-      .limit(1)
-      .single();
-    
-    if (error) {
-      console.error("Error fetching host:", error);
-      return null;
-    }
-    return data?.id || null;
+  const addLog = (message: string) => {
+    setLog(prev => [...prev, message]);
   };
 
-  const handleSeed = async () => {
-    setLoading(true);
-    setResultMessage(null);
+  const seedDatabase = async () => {
+    setIsLoading(true);
+    addLog("Starting database seeding process...");
 
     try {
-      const host_id = await getAnyHostId();
+      // Find a host user to associate the cars with
+      addLog("Looking for a host user...");
+      
+      // First check in profiles table for a user with user_role = 'host'
+      const { data: hostProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_role', 'host')
+        .limit(1);
 
-      if (!host_id) {
-        setResultMessage("No host found in the database. Assign a host role to a user first.");
-        setLoading(false);
-        return;
+      if (profilesError) {
+        throw new Error(`Error fetching host profiles: ${profilesError.message}`);
       }
 
-      for (let i = 0; i < demoCars.length; i++) {
-        const car = demoCars[i];
-
-        // Check if car with same license plate exists for idempotency
-        const { data: exists, error: existsError } = await supabase
-          .from("cars")
-          .select("id")
-          .eq("license_plate", car.license_plate)
-          .maybeSingle();
-
-        let car_id = exists?.id;
-        if (!car_id) {
-          // Insert car
-          const { data: insertCar, error: carError } = await supabase
-            .from("cars")
-            .insert({
-              ...car,
-              host_id,
-              available_days: [
-                "monday",
-                "tuesday",
-                "wednesday",
-                "thursday",
-                "friday",
-                "saturday",
-                "sunday",
-              ],
-              available_hours: JSON.stringify({ start: "08:00", end: "20:00" }),
-              cancellation_policy: "moderate",
-              trust_rating: 4.6,
-              multi_day_discount: 10,
-              custom_availability: null,
-              pickup_instructions: "Message host on arrival.",
-              image_url: car.images[0].url,
-            })
-            .select("id")
-            .single();
-          if (carError || !insertCar) {
-            throw new Error(
-              `Failed to insert car ${car.brand} ${car.model}: ${
-                carError?.message || "Unknown error"
-              }`
-            );
+      let hostId;
+      
+      if (hostProfiles && hostProfiles.length > 0) {
+        hostId = hostProfiles[0].id;
+        addLog(`Found existing host with ID: ${hostId}`);
+      } else {
+        // If no host found, create a new user
+        addLog("No host found. Creating a new host user...");
+        
+        // Create a new host user
+        const { data: newUser, error: createUserError } = await supabase.auth.signUp({
+          email: `host-${Date.now()}@example.com`,
+          password: 'password123',
+          options: {
+            data: {
+              user_role: 'host'
+            }
           }
-          car_id = insertCar.id;
+        });
+
+        if (createUserError) {
+          throw new Error(`Error creating host user: ${createUserError.message}`);
         }
 
-        // Add image reference to car_images
-        const { error: imageError } = await supabase.from("car_images").insert({
-          car_id,
-          image_path: car.images[0].url,
-          is_primary: true,
-        });
-        if (imageError && !String(imageError.message).includes("duplicate")) {
-          throw new Error("Failed to insert car image: " + imageError.message);
+        if (!newUser.user) {
+          throw new Error("Failed to create host user");
         }
+
+        hostId = newUser.user.id;
+        
+        // Create profile for the new host
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: hostId,
+            user_role: 'host',
+            full_name: 'Demo Host',
+            license_status: 'verified'
+          });
+
+        if (profileError) {
+          throw new Error(`Error creating host profile: ${profileError.message}`);
+        }
+        
+        addLog(`Created new host with ID: ${hostId}`);
       }
-      setResultMessage("Seeded 3 demo cars successfully! Check your /cars listing.");
+
+      // Insert cars one by one
+      addLog("Adding cars to the database...");
+      
+      for (const car of seedCars) {
+        // Insert car data
+        const { data: carData, error: carError } = await supabase
+          .from('cars')
+          .insert({
+            host_id: hostId,
+            brand: car.brand,
+            model: car.model,
+            year: car.year,
+            transmission: car.transmission,
+            fuel_type: car.fuel_type,
+            car_type: car.car_type,
+            doors: car.doors,
+            has_ac: car.has_ac,
+            license_plate: car.license_plate,
+            price_per_day: car.price_per_day,
+            multi_day_discount: car.multi_day_discount,
+            cancellation_policy: car.cancellation_policy,
+            location: car.location,
+            description: car.description
+          })
+          .select('id')
+          .single();
+
+        if (carError) {
+          throw new Error(`Error inserting car data for ${car.brand} ${car.model}: ${carError.message}`);
+        }
+
+        if (!carData) {
+          throw new Error(`Failed to insert car data for ${car.brand} ${car.model}`);
+        }
+
+        // Add car image
+        const { error: imageError } = await supabase
+          .from('car_images')
+          .insert({
+            car_id: carData.id,
+            is_primary: true,
+            image_path: car.image_url
+          });
+
+        if (imageError) {
+          throw new Error(`Error inserting car image for ${car.brand} ${car.model}: ${imageError.message}`);
+        }
+
+        addLog(`Added ${car.brand} ${car.model} with image`);
+      }
+
+      addLog("Seeding completed successfully!");
+      setIsComplete(true);
+      toast.success("Demo cars added successfully!");
     } catch (error: any) {
-      setResultMessage(`Something went wrong: ${error.message || error.toString()}`);
+      addLog(`ERROR: ${error.message}`);
+      toast.error(`Failed to seed database: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="max-w-lg mx-auto">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle>Seed Demo Cars</CardTitle>
-          <p className="text-muted-foreground text-sm pt-2">
-            Click the button below to insert 3 Honda City demo cars with seeded images (for test/dev).
-          </p>
+          <CardTitle className="flex items-center gap-2">
+            <CarFront className="h-6 w-6 text-rento-blue" />
+            Seed Cars Database
+          </CardTitle>
+          <CardDescription>
+            Add demo cars to the database for development and testing
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button disabled={loading} onClick={handleSeed} className="w-full mb-4">
-            {loading ? "Seeding..." : "Seed Demo Cars"}
-          </Button>
-          {resultMessage && (
-            <div
-              className={`text-sm mt-2 ${
-                resultMessage.startsWith("Seeded")
-                  ? "text-green-600"
-                  : "text-destructive"
-              }`}
-            >
-              {resultMessage}
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-md">
+              <p className="font-medium mb-2">This tool will:</p>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>Find or create a host user</li>
+                <li>Add 3 sample cars with different characteristics</li>
+                <li>Link the cars to the host user</li>
+                <li>Add sample images to each car</li>
+              </ul>
             </div>
-          )}
-          <div className="mt-6">
-            <strong>Demo Images Used:</strong>
-            <ul className="pt-2 space-y-1">
-              <li>
-                <img src="/public/lovable-uploads/c5b96ea5-bb51-49f4-a371-d60c2e57c514.png" alt="Car 1" className="h-14 rounded shadow" />
-              </li>
-              <li>
-                <img src="/public/lovable-uploads/58943a57-48c0-8409-853692f63f3c.png" alt="Car 2" className="h-14 rounded shadow" />
-              </li>
-              <li>
-                <img src="/public/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png" alt="Car 3" className="h-14 rounded shadow" />
-              </li>
-            </ul>
+
+            {log.length > 0 && (
+              <div className="bg-black text-green-400 p-4 rounded-md font-mono text-sm overflow-auto max-h-60">
+                {log.map((entry, index) => (
+                  <div key={index} className="leading-relaxed">
+                    &gt; {entry}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isComplete && (
+              <div className="bg-green-50 text-green-800 p-4 rounded-md flex items-start">
+                <CheckCircle2 className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                <div>
+                  <p className="font-medium">Database seeded successfully!</p>
+                  <p className="text-sm mt-1">You can now browse the cars in the car listing page.</p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/cars")}
+          >
+            Go to Car Listing
+          </Button>
+          
+          <Button 
+            disabled={isLoading || isComplete} 
+            onClick={seedDatabase}
+          >
+            {isLoading ? "Seeding Database..." : isComplete ? "Completed" : "Seed Database"}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

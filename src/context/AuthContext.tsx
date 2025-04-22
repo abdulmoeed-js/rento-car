@@ -282,34 +282,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  // Enhanced init function with multiple safeguards
+  // Fix auth initialization to prevent infinite loading
   useEffect(() => {
-    let isActive = true; // Track if component is still mounted
+    let isActive = true;
     let timeoutId: number | null = null;
     
     const initAuth = async () => {
       try {
         console.log("Starting auth initialization...");
         
-        // Set up auth listener first
+        // Use these variables to track state updates
+        let sessionChecked = false;
+        let listenerSet = false;
+        
+        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
+          async (event, newSession) => {
             console.log("Auth state change:", event);
             
             if (isActive) {
               if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-                if (session?.user) {
-                  const profile = await checkProfile(session.user.id);
-                  const mappedUser = mapUserToModel(session.user, profile);
+                if (newSession?.user) {
+                  const profile = await checkProfile(newSession.user.id);
+                  const mappedUser = mapUserToModel(newSession.user, profile);
                   
                   setUser(mappedUser);
                   if (profile) {
                     setUserData({
-                      ...session.user,
+                      ...newSession.user,
                       ...profile
                     });
                   }
-                  setSession(session);
+                  setSession(newSession);
                 }
               } else if (event === 'SIGNED_OUT') {
                 setUser(null);
@@ -320,6 +324,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               // Always update loading state after auth state change
               setLoading(false);
               setAuthChecked(true);
+              listenerSet = true;
             }
           }
         );
@@ -342,6 +347,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(currentSession);
         }
         
+        sessionChecked = true;
+        
+        // If we've checked the session and set up the listener, we can update the loading state
+        if (sessionChecked && listenerSet && isActive) {
+          setLoading(false);
+          setAuthChecked(true);
+        }
+        
         // Safety timeout - ensure loading state resolves even if auth check fails
         if (isActive) {
           // Set a timeout to force-complete the loading state in case of issues
@@ -351,11 +364,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setLoading(false);
               setAuthChecked(true);
             }
-          }, 2000); // 2 seconds timeout
-          
-          // Finally, update loading state
-          setLoading(false);
-          setAuthChecked(true);
+          }, 1500); // 1.5 seconds timeout (reduced from 2s for faster response)
         }
         
         return () => {
@@ -385,7 +394,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userData,
     session,
     loading,
-    isLoading: loading || !authChecked, // Consider initialization incomplete until both loading is false and auth check has completed
+    isLoading: loading, // Simplified to just loading to avoid confusion
     signIn,
     signOut,
     updateUser,

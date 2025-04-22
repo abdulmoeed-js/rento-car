@@ -7,8 +7,9 @@ import { CarFilters } from "@/types/car";
 import CarFiltersComponent from "@/components/CarFilters";
 import CarCard from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
-import { CarFront } from "lucide-react";
+import { CarFront, User } from "lucide-react";
 import RentoHeader from "@/components/layout/RentoHeader";
+import { useAuth } from "@/context/AuthContext";
 
 const defaultFilters: CarFilters = {
   priceRange: [0, 200],
@@ -20,6 +21,7 @@ const defaultFilters: CarFilters = {
 };
 
 const CarListing = () => {
+  const { user } = useAuth();
   const [filters, setFilters] = useState<CarFilters>(defaultFilters);
 
   const { data: cars = [], isLoading, refetch } = useQuery({
@@ -42,9 +44,20 @@ const CarListing = () => {
 
       {/* Main Content */}
       <main className="container mx-auto p-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-rento-dark">Available Cars</h1>
-          <p className="text-muted-foreground">Find the perfect car for your next trip</p>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-rento-dark">Available Cars</h1>
+            <p className="text-muted-foreground">Find the perfect car for your next trip</p>
+          </div>
+          
+          {!user && (
+            <Button asChild className="gap-2">
+              <Link to="/auth">
+                <User className="h-4 w-4" />
+                Sign In / Sign Up
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-col md:flex-row gap-6">
