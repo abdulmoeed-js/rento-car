@@ -1,40 +1,32 @@
 
+# Project ID
 project_id = "tzawsihjrndgmaartefg"
 
 [api]
-enabled = true
-port = 54321
+# Port to use for the API URL
+port = 8000
 schemas = ["public", "storage", "graphql_public"]
 
 [db]
-port = 54322
-
-[storage]
-enabled = true
-port = 5000
-
-[auth]
-enabled = true
-port = 9999
-
-[inbucket]
-enabled = true
-port = 54324
-
-[vector]
-enabled = true
-port = 54323
+# Port to use for the local database URL
+port = 5432
 
 [studio]
-enabled = true
-port = 6370
+# Port to use for Supabase Studio
+port = 8001
 
-[functions]
-[functions.create-payment-intent]
-verify_jwt = true
+[inbucket]
+# Port for the email testing server web interface
+port = 9000
 
-[functions.send-booking-notification]
-verify_jwt = true
+[storage]
+# The maximum file size allowed (in bytes)
+file_size_limit = "50MiB"
 
-[functions.log-user-activity]
+[auth]
+# The site URL used for redirects and email links
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+
+[functions.has-role]
 verify_jwt = true
