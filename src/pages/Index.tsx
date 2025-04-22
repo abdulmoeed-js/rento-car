@@ -50,7 +50,7 @@ const Index = () => {
     );
   }
 
-  // If not authenticated, direct to auth page
+  // If not authenticated and not loading, direct to auth page
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">

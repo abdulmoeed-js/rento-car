@@ -67,17 +67,37 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
       const carImages = Array.isArray(carImagesData) ? carImagesData : [];
       const primaryImage = carImages.find(img => img.is_primary);
       
-      // Properly parse available_hours from JSON
+      // Safely parse available_hours
       let availableHours = { start: '08:00', end: '20:00' };
       
-      // Check if available_hours exists and is an object (not an array)
-      if (car.available_hours && typeof car.available_hours === 'object' && !Array.isArray(car.available_hours)) {
-        const hoursObj = car.available_hours as Record<string, any>;
-        if ('start' in hoursObj) {
-          availableHours.start = String(hoursObj.start);
-        }
-        if ('end' in hoursObj) {
-          availableHours.end = String(hoursObj.end);
+      if (car.available_hours) {
+        // Handle different possible formats of available_hours
+        if (typeof car.available_hours === 'object') {
+          // If it's an object but not an array
+          if (!Array.isArray(car.available_hours)) {
+            // If it has string properties
+            if (car.available_hours.start && typeof car.available_hours.start === 'string') {
+              availableHours.start = car.available_hours.start;
+            }
+            if (car.available_hours.end && typeof car.available_hours.end === 'string') {
+              availableHours.end = car.available_hours.end;
+            }
+          }
+        } else if (typeof car.available_hours === 'string') {
+          // If it's a JSON string, try to parse it
+          try {
+            const parsed = JSON.parse(car.available_hours);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              if (typeof parsed.start === 'string') {
+                availableHours.start = parsed.start;
+              }
+              if (typeof parsed.end === 'string') {
+                availableHours.end = parsed.end;
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing available_hours:", e);
+          }
         }
       }
       
@@ -124,17 +144,37 @@ export const getCarById = async (id: string): Promise<Car | null> => {
     const carImages = Array.isArray(carImagesData) ? carImagesData : [];
     const primaryImage = carImages.find(img => img.is_primary);
     
-    // Properly parse available_hours from JSON
+    // Safely parse available_hours
     let availableHours = { start: '08:00', end: '20:00' };
     
-    // Check if available_hours exists and is an object (not an array)
-    if (data.available_hours && typeof data.available_hours === 'object' && !Array.isArray(data.available_hours)) {
-      const hoursObj = data.available_hours as Record<string, any>;
-      if ('start' in hoursObj) {
-        availableHours.start = String(hoursObj.start);
-      }
-      if ('end' in hoursObj) {
-        availableHours.end = String(hoursObj.end);
+    if (data.available_hours) {
+      // Handle different possible formats of available_hours
+      if (typeof data.available_hours === 'object') {
+        // If it's an object but not an array
+        if (!Array.isArray(data.available_hours)) {
+          // If it has string properties
+          if (data.available_hours.start && typeof data.available_hours.start === 'string') {
+            availableHours.start = data.available_hours.start;
+          }
+          if (data.available_hours.end && typeof data.available_hours.end === 'string') {
+            availableHours.end = data.available_hours.end;
+          }
+        }
+      } else if (typeof data.available_hours === 'string') {
+        // If it's a JSON string, try to parse it
+        try {
+          const parsed = JSON.parse(data.available_hours);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            if (typeof parsed.start === 'string') {
+              availableHours.start = parsed.start;
+            }
+            if (typeof parsed.end === 'string') {
+              availableHours.end = parsed.end;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing available_hours:", e);
+        }
       }
     }
     

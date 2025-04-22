@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,17 +67,37 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
             }
           }
           
-          // Parse available_hours from JSON
+          // Parse available_hours from JSON safely
           let availableHours = { start: '08:00', end: '20:00' };
           
-          // Check if available_hours exists and is an object (not an array)
-          if (car.available_hours && typeof car.available_hours === 'object' && !Array.isArray(car.available_hours)) {
-            const hoursObj = car.available_hours as Record<string, any>;
-            if ('start' in hoursObj) {
-              availableHours.start = String(hoursObj.start);
-            }
-            if ('end' in hoursObj) {
-              availableHours.end = String(hoursObj.end);
+          if (car.available_hours) {
+            // Handle different possible formats of available_hours
+            if (typeof car.available_hours === 'object') {
+              // If it's an object but not an array
+              if (!Array.isArray(car.available_hours)) {
+                // If it has string properties
+                if (typeof car.available_hours.start === 'string') {
+                  availableHours.start = car.available_hours.start;
+                }
+                if (typeof car.available_hours.end === 'string') {
+                  availableHours.end = car.available_hours.end;
+                }
+              }
+            } else if (typeof car.available_hours === 'string') {
+              // If it's a JSON string, try to parse it
+              try {
+                const parsed = JSON.parse(car.available_hours);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  if (typeof parsed.start === 'string') {
+                    availableHours.start = parsed.start;
+                  }
+                  if (typeof parsed.end === 'string') {
+                    availableHours.end = parsed.end;
+                  }
+                }
+              } catch (e) {
+                console.error("Error parsing available_hours:", e);
+              }
             }
           }
           
