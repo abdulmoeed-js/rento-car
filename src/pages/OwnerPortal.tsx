@@ -112,10 +112,21 @@ const OwnerPortal = () => {
           const carImages = Array.isArray(carImagesData) ? carImagesData : [];
           const primaryImage = carImages.find(img => img.is_primary);
           
+          // Parse available_hours from JSON to the expected structure
+          const availableHours = car.available_hours ? {
+            start: typeof car.available_hours === 'object' && car.available_hours.start 
+              ? String(car.available_hours.start) 
+              : '08:00',
+            end: typeof car.available_hours === 'object' && car.available_hours.end 
+              ? String(car.available_hours.end) 
+              : '20:00'
+          } : { start: '08:00', end: '20:00' };
+          
           return {
             ...car,
+            available_hours: availableHours, // Properly formatted available_hours
             image_url: primaryImage?.image_path || (carImages.length > 0 ? carImages[0].image_path : ''),
-            images: carImages, // Maintain compatibility with the Car type
+            images: carImages, // Keep for backwards compatibility
             bookings: Array.isArray(car.bookings) ? car.bookings : []
           } as Car;
         }) : [];

@@ -1,4 +1,3 @@
-
 export interface Car {
   id: string;
   brand: string;
@@ -33,6 +32,13 @@ export interface Car {
   location_coordinates?: { lat?: number; lng?: number } | null;
   // Array properties - explicitly define as arrays or null
   images?: {
+    id: string;
+    car_id: string;
+    image_path: string;
+    is_primary: boolean;
+    created_at: string;
+  }[] | null;
+  car_images?: {
     id: string;
     car_id: string;
     image_path: string;

@@ -66,6 +66,17 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
               if (primaryIndex === -1) primaryIndex = 0;
             }
           }
+          
+          // Parse available_hours from JSON
+          const availableHours = car.available_hours ? {
+            start: typeof car.available_hours === 'object' && car.available_hours.start 
+              ? String(car.available_hours.start) 
+              : '08:00',
+            end: typeof car.available_hours === 'object' && car.available_hours.end 
+              ? String(car.available_hours.end) 
+              : '20:00'
+          } : { start: '08:00', end: '20:00' };
+          
           onLoaded({
             brand: car.brand,
             model: car.model,
@@ -86,7 +97,7 @@ export function useCarData({ id, user, onLoaded, onAllStepsValidated }: UseCarDa
             multi_day_discount: car.multi_day_discount || 0,
             cancellation_policy: (car.cancellation_policy as "flexible" | "moderate" | "strict") || "moderate",
             available_days: car.available_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-            available_hours: car.available_hours || { start: '08:00', end: '20:00' },
+            available_hours: availableHours,
             custom_availability: car.custom_availability,
             location: car.location,
             location_coordinates: car.location_coordinates as { lat?: number; lng?: number } || null,

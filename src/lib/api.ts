@@ -67,8 +67,19 @@ export const fetchCars = async (filters: CarFilters, page: number, pageSize: num
       const carImages = Array.isArray(carImagesData) ? carImagesData : [];
       const primaryImage = carImages.find(img => img.is_primary);
       
+      // Properly parse available_hours from JSON
+      const availableHours = car.available_hours ? {
+        start: typeof car.available_hours === 'object' && car.available_hours.start 
+          ? String(car.available_hours.start) 
+          : '08:00',
+        end: typeof car.available_hours === 'object' && car.available_hours.end 
+          ? String(car.available_hours.end) 
+          : '20:00'
+      } : { start: '08:00', end: '20:00' };
+      
       return {
         ...(car as any),
+        available_hours: availableHours,
         host_rating: 4.5, // Placeholder value
         availability: true, // Add missing required property
         image_url: primaryImage?.image_path || 
@@ -109,9 +120,20 @@ export const getCarById = async (id: string): Promise<Car | null> => {
     const carImages = Array.isArray(carImagesData) ? carImagesData : [];
     const primaryImage = carImages.find(img => img.is_primary);
     
+    // Properly parse available_hours from JSON
+    const availableHours = data.available_hours ? {
+      start: typeof data.available_hours === 'object' && data.available_hours.start 
+        ? String(data.available_hours.start) 
+        : '08:00',
+      end: typeof data.available_hours === 'object' && data.available_hours.end 
+        ? String(data.available_hours.end) 
+        : '20:00'
+    } : { start: '08:00', end: '20:00' };
+    
     // Add placeholder host_rating for compatibility
     return {
       ...(data as any),
+      available_hours: availableHours,
       host_rating: 4.5, // Placeholder value
       availability: true, // Add missing required property
       image_url: primaryImage?.image_path || 
