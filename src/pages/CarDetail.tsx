@@ -2,7 +2,8 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getCarById, getMonthlyAvailability } from "@/lib/api";
+import { getCarById } from "@/lib/carApi";
+import { getMonthlyAvailability } from "@/lib/bookingApi";
 import { Button } from "@/components/ui/button";
 import { MapPin, Star } from "lucide-react";
 import RentoHeader from "@/components/layout/RentoHeader";

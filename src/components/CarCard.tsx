@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Car } from "@/types/car";
 import AvailabilityCalendar from "./AvailabilityCalendar";
-import { getMonthlyAvailability } from "@/lib/api";
+import { getMonthlyAvailability } from "@/lib/bookingApi";
 import { MapPin, Star } from "lucide-react";
 
 interface CarCardProps {
