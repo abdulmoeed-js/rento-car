@@ -34,7 +34,7 @@ const Index = () => {
     }
   }, [user, isLoading, navigate]);
 
-  // If authentication is still loading, show loading state
+  // If authentication is still loading, show a more informative loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -44,8 +44,8 @@ const Index = () => {
             <span className="font-bold text-2xl text-rento-blue">Rento</span>
           </div>
           <div className="animate-spin h-8 w-8 border-4 border-rento-blue border-t-transparent rounded-full"></div>
-          <p className="text-muted-foreground">Checking authentication...</p>
-          <p className="text-xs text-muted-foreground mt-2">If this takes too long, try refreshing the page.</p>
+          <p className="text-muted-foreground">Loading Rento...</p>
+          <p className="text-xs text-muted-foreground mt-2">Please wait while we initialize your session.</p>
         </div>
       </div>
     );

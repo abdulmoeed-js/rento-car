@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useState,
@@ -283,9 +282,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  // Enhanced init function with timeout safeguard
+  // Enhanced init function with multiple safeguards
   useEffect(() => {
     let isActive = true; // Track if component is still mounted
+    let timeoutId: number | null = null;
     
     const initAuth = async () => {
       try {
@@ -296,12 +296,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           async (event, session) => {
             console.log("Auth state change:", event);
             
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-              if (session?.user) {
-                const profile = await checkProfile(session.user.id);
-                const mappedUser = mapUserToModel(session.user, profile);
-                
-                if (isActive) {
+            if (isActive) {
+              if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                if (session?.user) {
+                  const profile = await checkProfile(session.user.id);
+                  const mappedUser = mapUserToModel(session.user, profile);
+                  
                   setUser(mappedUser);
                   if (profile) {
                     setUserData({
@@ -311,54 +311,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   }
                   setSession(session);
                 }
-              }
-            } else if (event === 'SIGNED_OUT') {
-              if (isActive) {
+              } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setUserData(null);
                 setSession(null);
               }
-            }
-            
-            // Always ensure loading is set to false after auth state change
-            if (isActive) {
+              
+              // Always update loading state after auth state change
               setLoading(false);
               setAuthChecked(true);
             }
           }
         );
         
-        // Also check current session as a fallback
+        // Also check current session
         const { data: sessionData } = await supabase.auth.getSession();
         const currentSession = sessionData.session;
         
-        if (currentSession?.user) {
+        if (currentSession?.user && isActive) {
           const profile = await checkProfile(currentSession.user.id);
           const mappedUser = mapUserToModel(currentSession.user, profile);
           
-          if (isActive) {
-            setUser(mappedUser);
-            if (profile) {
-              setUserData({
-                ...currentSession.user,
-                ...profile
-              });
-            }
-            setSession(currentSession);
+          setUser(mappedUser);
+          if (profile) {
+            setUserData({
+              ...currentSession.user,
+              ...profile
+            });
           }
+          setSession(currentSession);
         }
         
-        // Safety timeout to ensure loading state always resolves
-        setTimeout(() => {
-          if (isActive && loading) {
-            console.log("Auth check timeout reached - forcing loading state to false");
-            setLoading(false);
-            setAuthChecked(true);
-          }
-        }, 3000);
-        
-        // Always make sure to update loading state
+        // Safety timeout - ensure loading state resolves even if auth check fails
         if (isActive) {
+          // Set a timeout to force-complete the loading state in case of issues
+          timeoutId = window.setTimeout(() => {
+            if (isActive && (loading || !authChecked)) {
+              console.log("Auth check timeout triggered - forcing loading state to complete");
+              setLoading(false);
+              setAuthChecked(true);
+            }
+          }, 2000); // 2 seconds timeout
+          
+          // Finally, update loading state
           setLoading(false);
           setAuthChecked(true);
         }
@@ -379,8 +374,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     return () => {
       isActive = false; // Prevent state updates if component unmounts
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, [checkProfile, loading]);
+  }, [checkProfile]);
 
   const value = {
     user,
