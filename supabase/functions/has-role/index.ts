@@ -16,6 +16,8 @@ serve(async (req) => {
   try {
     // Get the request body
     const { userId, role } = await req.json();
+    
+    console.log("Checking role for user:", userId, "Role:", role);
 
     if (!userId || !role) {
       return new Response(
@@ -27,6 +29,14 @@ serve(async (req) => {
     // Create a Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase URL or service role key");
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -46,6 +56,8 @@ serve(async (req) => {
       );
     }
 
+    console.log("Role check result:", !!data);
+    
     return new Response(
       JSON.stringify({ hasRole: !!data }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

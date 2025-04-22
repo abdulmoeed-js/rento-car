@@ -13,12 +13,19 @@ export const formatErrorMessage = (error: any): string => {
 
 export const hasRole = async (userId: string, role: string): Promise<boolean> => {
   try {
-    // Use the Edge function directly
+    if (!userId) return false;
+    
+    // Use the Edge function directly with proper error handling
     const { data, error } = await supabase.functions.invoke('has-role', {
       body: { userId, role }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error invoking has-role function:", error);
+      throw error;
+    }
+    
+    console.log("Has role response:", data);
     return data?.hasRole || false;
   } catch (error) {
     console.error("Error checking role:", error);

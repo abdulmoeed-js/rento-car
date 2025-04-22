@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { CarFormData, FormStep } from "@/types/owner";
@@ -17,11 +17,14 @@ import CarAvailabilityForm from "@/components/owner/CarAvailabilityForm";
 import CarPickupForm from "@/components/owner/CarPickupForm";
 import CarReviewForm from "@/components/owner/CarReviewForm";
 import { CarStepper } from "@/components/owner/CarStepper";
+import { hasRole } from "@/utils/supabaseHelpers";
+import { toast } from "sonner";
 
 const AddEditCar = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<CarFormData>>({
     brand: '',
     model: '',
@@ -53,6 +56,35 @@ const AddEditCar = () => {
     goToPreviousStep
   } = useCarStepper("details");
 
+  // Check if user is logged in and has the host role
+  useEffect(() => {
+    const checkAccess = async () => {
+      setLoading(true);
+      
+      if (!user) {
+        toast.error("You need to be logged in");
+        navigate("/auth");
+        return;
+      }
+      
+      try {
+        const isHost = await hasRole(user.id, "host");
+        if (!isHost) {
+          toast.error("Only hosts can add or edit cars");
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Error checking role:", error);
+        toast.error("Error verifying user permissions");
+        navigate("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAccess();
+  }, [user, navigate]);
+
   // load state for car (edit mode)
   const [allValidated, setAllValidated] = useState(false);
 
@@ -74,6 +106,8 @@ const AddEditCar = () => {
 
   const handleSubmit = async () => {
     if (!user) {
+      toast.error("You need to be logged in");
+      navigate("/auth");
       return;
     }
     const success = await saveCar(formData, user.id);
@@ -82,8 +116,22 @@ const AddEditCar = () => {
     }
   };
 
-  // Loading state
-  // We'll rely on useCarData's isLoading state:
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <RentoHeader />
+        <main className="container mx-auto py-8 px-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-center items-center h-40">
+                <p>Loading...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

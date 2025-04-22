@@ -21,9 +21,13 @@ export const useCarManagement = (carId?: string) => {
 
     try {
       setIsSubmitting(true);
+      console.log("Starting car save process...");
 
       // 1. Verify host role
+      console.log("Verifying host role for user:", userId);
       const isHost = await hasRole(userId, "host");
+      console.log("Is user a host?", isHost);
+      
       if (!isHost) {
         toast.error(
           "Only hosts can add or edit cars. Please contact support if you believe this is an error."
@@ -33,13 +37,14 @@ export const useCarManagement = (carId?: string) => {
 
       // 2. Prepare data
       const carData = prepareCarData(formData, userId);
-      console.log("Submitting car data:", carData);
+      console.log("Prepared car data:", carData);
 
       let resultCarId = carId;
 
       // 3. Insert/update car record (fix RLS by always setting host_id)
       if (carId) {
         // Update
+        console.log("Updating existing car:", carId);
         const { error } = await supabase
           .from("cars")
           .update(carData)
@@ -50,8 +55,10 @@ export const useCarManagement = (carId?: string) => {
           console.error("Error updating car:", error);
           throw error;
         }
+        console.log("Car updated successfully");
       } else {
         // Insert
+        console.log("Creating new car");
         const { data, error } = await supabase
           .from("cars")
           .insert({ ...carData, host_id: userId })
@@ -59,6 +66,7 @@ export const useCarManagement = (carId?: string) => {
           .single();
 
         if (error) {
+          console.error("Error creating car:", error);
           if (
             error.message.includes("row level security") ||
             error.message.includes("violates security policy")
@@ -74,48 +82,42 @@ export const useCarManagement = (carId?: string) => {
           throw new Error("Failed to get car ID after insertion");
         }
         resultCarId = data.id;
+        console.log("New car created with ID:", resultCarId);
       }
 
-      // 4. Ensure car_images bucket exists (skipable if already exists)
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const bucketExists = buckets?.some(
-          (bucket) => bucket.name === "car_images"
-        );
-        if (!bucketExists) {
-          await supabase.storage.createBucket("car_images", { 
-            public: true,
-            fileSizeLimit: 5242880 // 5MB
-          });
-        }
-      } catch (error) {
-        console.warn("Storage bucket check error (continuing):", error);
-      }
-
-      // 5. Upload images if any
+      // 4. Upload images if any
       if (formData.images && formData.images.length > 0 && resultCarId) {
-        await uploadCarImages({
+        console.log("Uploading car images");
+        const uploadSuccess = await uploadCarImages({
           carId: resultCarId,
           images: formData.images,
           existingImageCount: formData.existingImages?.length || 0,
           primaryImageIndex: formData.primaryImageIndex || 0,
           setUploadProgress,
         });
+        
+        if (!uploadSuccess) {
+          toast.error("Some images failed to upload. Your car was saved, but you may need to re-upload images.");
+        }
       }
 
-      // 6. Update primary image if changed with existing images
+      // 5. Update primary image if changed with existing images
       if (
         formData.existingImages &&
         formData.existingImages.length > 0 &&
         formData.primaryImageIndex !== undefined
       ) {
         const primaryIndex = formData.primaryImageIndex;
+        console.log("Updating primary image, selected index:", primaryIndex);
+        
         if (
           primaryIndex < formData.existingImages.length &&
           formData.existingImages[primaryIndex]
         ) {
           const primaryImageId = formData.existingImages[primaryIndex].id;
           if (primaryImageId) {
+            console.log("Setting primary image ID:", primaryImageId);
+            
             // Reset all to non-primary
             await supabase
               .from("car_images")
@@ -127,6 +129,8 @@ export const useCarManagement = (carId?: string) => {
               .from("car_images")
               .update({ is_primary: true })
               .eq("id", primaryImageId);
+            
+            console.log("Primary image updated successfully");
           }
         }
       }
