@@ -7,13 +7,8 @@ import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
 import UploadLicense from "./pages/UploadLicense";
 import OwnerPortal from "./pages/OwnerPortal";
-import Admin from "./pages/Admin";
 import { hasRole } from "@/utils/supabaseHelpers";
 import { useEffect, useState } from "react";
-import { Layout } from "@/components/Layout";
-import Chat from "./pages/Chat";
-
-// Add this import for the Wheelationship page
 import Wheelationship from "./pages/Wheelationship";
 
 const ProtectedRoute = ({
@@ -56,6 +51,14 @@ const ProtectedRoute = ({
   return children;
 };
 
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="min-h-screen bg-background">
+      {children}
+    </div>
+  );
+};
+
 const App = () => {
   const { authInitialized } = useAuth();
   
@@ -83,6 +86,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+            {/* Temporarily commented out Admin route until we create the component
             <Route
               path="/admin"
               element={
@@ -91,7 +95,9 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-             <Route
+            */}
+            {/* Temporarily commented out Chat route until we create the component
+            <Route
               path="/chat"
               element={
                 <ProtectedRoute>
@@ -99,6 +105,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+            */}
           </Routes>
         </Layout>
       </AuthProvider>
