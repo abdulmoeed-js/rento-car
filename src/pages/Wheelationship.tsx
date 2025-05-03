@@ -39,152 +39,102 @@ const Wheelationship = () => {
       }
     }
     
-    // Find matching cars based on answers
-    // This is a simplified version - in a real app you'd use a more sophisticated algorithm
     try {
-      // Get car tags that correspond to the user's answers
-      const tagPromises = [];
+      // Map quiz answers to the format expected by the match_cars function
+      const quizPayload: Record<string, string> = {};
       
-      // Trip type
+      // Map trip type to use case
+      const tripTypeMap: Record<string, string> = {
+        "city": "city_driving",
+        "roadTrip": "road_trip",
+        "adventure": "off_road",
+        "family": "family_travel",
+        "business": "business",
+        "moving": "moving"
+      };
+      
       if (quizAnswers.tripType) {
-        const tripTypeMap: Record<string, string> = {
-          "city": "city_driving",
-          "roadTrip": "road_trip",
-          "adventure": "off_road",
-          "family": "family_travel",
-          "business": "business",
-          "moving": "moving"
-        };
-        
-        if (tripTypeMap[quizAnswers.tripType]) {
-          tagPromises.push(
-            supabase
-              .from("car_tags")
-              .select("id")
-              .eq("tag", tripTypeMap[quizAnswers.tripType])
-              .eq("tag_type", "use_case")
-          );
-        }
+        quizPayload.tripType = tripTypeMap[quizAnswers.tripType] || quizAnswers.tripType;
       }
       
-      // Party size
+      // Map party size to seats
       if (quizAnswers.partySize) {
-        let capacityTag;
         const partySize = parseInt(quizAnswers.partySize);
-        
-        if (partySize <= 2) capacityTag = "2_seats";
-        else if (partySize <= 4) capacityTag = "4_seats";
-        else if (partySize <= 5) capacityTag = "5_seats";
-        else if (partySize <= 7) capacityTag = "7_seats";
-        else capacityTag = "8+_seats";
-        
-        tagPromises.push(
-          supabase
-            .from("car_tags")
-            .select("id")
-            .eq("tag", capacityTag)
-            .eq("tag_type", "capacity")
-        );
+        if (partySize <= 2) quizPayload.seats = "2_seats";
+        else if (partySize <= 4) quizPayload.seats = "4_seats";
+        else if (partySize <= 5) quizPayload.seats = "5_seats";
+        else if (partySize <= 7) quizPayload.seats = "7_seats";
+        else quizPayload.seats = "8+_seats";
       }
       
-      // Budget
-      if (quizAnswers.budget) {
-        const budgetMap: Record<string, string> = {
-          "low": "economy",
-          "mid": "standard",
-          "high": "premium",
-          "luxury": "luxury"
-        };
-        
-        if (budgetMap[quizAnswers.budget]) {
-          tagPromises.push(
-            supabase
-              .from("car_tags")
-              .select("id")
-              .eq("tag", budgetMap[quizAnswers.budget])
-              .eq("tag_type", "luxury")
-          );
-        }
-      }
-      
-      // Car style/body
+      // Map car style to body
       if (quizAnswers.style) {
-        tagPromises.push(
-          supabase
-            .from("car_tags")
-            .select("id")
-            .eq("tag", quizAnswers.style)
-            .eq("tag_type", "body")
-        );
+        quizPayload.body = quizAnswers.style;
       }
       
-      // Preferences may include fuel types
+      // Map budget
+      if (quizAnswers.budget) {
+        quizPayload.budget = quizAnswers.budget;
+      }
+      
+      // Map preferences (fuel type)
       if (quizAnswers.preferences?.includes("eco")) {
-        const ecoTags = ["electric", "hybrid", "plugin_hybrid"];
-        tagPromises.push(
-          supabase
-            .from("car_tags")
-            .select("id")
-            .in("tag", ecoTags)
-            .eq("tag_type", "fuel")
-        );
+        quizPayload.fuel = "electric";
       }
       
-      // Execute all tag queries
-      const tagResults = await Promise.all(tagPromises);
-      const tagIds = tagResults
-        .filter(result => !result.error && result.data?.length > 0)
-        .flatMap(result => result.data?.map(tag => tag.id) || []);
+      console.log("Calling match_cars with payload:", quizPayload);
       
-      if (tagIds.length > 0) {
-        // Find cars that match these tags
-        const { data: carTagJoins, error: joinError } = await supabase
-          .from("car_tags_join")
-          .select("car_id")
-          .in("tag_id", tagIds);
+      // Call the match_cars RPC function
+      const { data: matchResults, error: matchError } = await supabase
+        .rpc('match_cars', { 
+          quiz: quizPayload,
+          limit_count: 5 
+        });
+      
+      if (matchError) {
+        console.error("Error finding matching cars:", matchError);
+        toast.error("Error finding your perfect car match");
+        return;
+      }
+      
+      if (matchResults && matchResults.length > 0) {
+        // Fetch full car details for each matched car
+        const carIds = matchResults.map(match => match.car_id);
         
-        if (joinError) {
-          console.error("Error finding matching cars:", joinError);
-          toast.error("Error finding your perfect car match");
+        const { data: cars, error: carsError } = await supabase
+          .from("cars")
+          .select(`
+            *,
+            images:car_images(*)
+          `)
+          .in("id", carIds);
+          
+        if (carsError) {
+          console.error("Error fetching cars:", carsError);
+          toast.error("Error loading your car matches");
           return;
         }
         
-        // Get unique car IDs
-        const carIds = [...new Set(carTagJoins?.map(join => join.car_id))];
+        // Process cars to include image URLs and match scores
+        const processedCars = cars?.map(car => {
+          const carImages = Array.isArray(car.images) ? car.images : [];
+          const primaryImage = carImages.find(img => img.is_primary);
+          const matchResult = matchResults.find(match => match.car_id === car.id);
+          
+          // Calculate match percentage from match_score (normalize to 70-100% range)
+          const totalPossibleScore = 5; // This depends on your scoring logic in the SQL function
+          let matchPercentage = Math.floor(70 + (matchResult?.match_score / totalPossibleScore) * 30);
+          // Ensure it's within range
+          matchPercentage = Math.max(70, Math.min(100, matchPercentage));
+          
+          return {
+            ...car,
+            image_url: primaryImage?.image_path || (carImages.length > 0 ? carImages[0].image_path : ''),
+            match_percentage: matchPercentage
+          };
+        });
         
-        if (carIds.length > 0) {
-          // Fetch full car details
-          const { data: cars, error: carsError } = await supabase
-            .from("cars")
-            .select(`
-              *,
-              images:car_images(*)
-            `)
-            .in("id", carIds)
-            .limit(5);
-          
-          if (carsError) {
-            console.error("Error fetching cars:", carsError);
-            toast.error("Error loading your car matches");
-            return;
-          }
-          
-          // Process cars to include image URLs
-          const processedCars = cars?.map(car => {
-            const carImages = Array.isArray(car.images) ? car.images : [];
-            const primaryImage = carImages.find(img => img.is_primary);
-            
-            return {
-              ...car,
-              image_url: primaryImage?.image_path || (carImages.length > 0 ? carImages[0].image_path : ''),
-              match_percentage: Math.floor(70 + Math.random() * 30) // Random match % between 70-100%
-            };
-          });
-          
-          setMatchedCars(processedCars || []);
-        } else {
-          setMatchedCars([]);
-        }
+        setMatchedCars(processedCars || []);
       } else {
         // Fallback: fetch some random cars if no specific matches
         const { data: randomCars, error: randomError } = await supabase

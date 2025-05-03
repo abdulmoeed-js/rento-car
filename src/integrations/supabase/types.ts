@@ -413,6 +413,13 @@ export type Database = {
         Args: { _email: string }
         Returns: undefined
       }
+      match_cars: {
+        Args: { quiz: Json; limit_count?: number }
+        Returns: {
+          car_id: string
+          match_score: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

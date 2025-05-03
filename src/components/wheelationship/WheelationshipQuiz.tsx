@@ -34,10 +34,9 @@ const QUESTIONS = [
     id: "budget",
     question: "What's your budget range?",
     options: [
-      { value: "low", label: "Economy", icon: "💰" },
-      { value: "mid", label: "Standard", icon: "💰💰" },
-      { value: "high", label: "Premium", icon: "💰💰💰" },
-      { value: "luxury", label: "Luxury", icon: "💎" }
+      { value: "low", label: "Economy (< 6,000 PKR/day)", icon: "💰" },
+      { value: "mid", label: "Standard (6,000-10,000 PKR/day)", icon: "💰💰" },
+      { value: "high", label: "Premium (> 10,000 PKR/day)", icon: "💰💰💰" }
     ]
   },
   {
