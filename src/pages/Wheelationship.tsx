@@ -21,11 +21,13 @@ const Wheelationship = () => {
   const [step, setStep] = useState<"quiz" | "results">("quiz");
   const [answers, setAnswers] = useState<QuizAnswer | null>(null);
   const [matchedCars, setMatchedCars] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleQuizComplete = async (quizAnswers: QuizAnswer) => {
     setAnswers(quizAnswers);
+    setIsLoading(true);
     
     // Save quiz answers to database for analytics (if user is logged in)
     if (user) {
@@ -94,6 +96,7 @@ const Wheelationship = () => {
       if (matchError) {
         console.error("Error finding matching cars:", matchError);
         toast.error("Error finding your perfect car match");
+        setIsLoading(false);
         return;
       }
       
@@ -112,6 +115,7 @@ const Wheelationship = () => {
         if (carsError) {
           console.error("Error fetching cars:", carsError);
           toast.error("Error loading your car matches");
+          setIsLoading(false);
           return;
         }
         
@@ -166,9 +170,10 @@ const Wheelationship = () => {
       console.error("Error in car matching algorithm:", error);
       toast.error("Something went wrong finding your car match");
       setMatchedCars([]);
+    } finally {
+      setIsLoading(false);
+      setStep("results");
     }
-    
-    setStep("results");
   };
 
   const handleRetakeQuiz = () => {
@@ -191,7 +196,12 @@ const Wheelationship = () => {
         </div>
         
         <Card className="w-full p-6">
-          {step === "quiz" ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin h-12 w-12 border-4 border-rento-blue border-t-transparent rounded-full mb-4"></div>
+              <p className="text-lg">Finding your perfect match...</p>
+            </div>
+          ) : step === "quiz" ? (
             <WheelationshipQuiz onComplete={handleQuizComplete} />
           ) : (
             <WheelationshipResults 
