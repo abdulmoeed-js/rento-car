@@ -2,8 +2,10 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import AuthTabs from "@/components/AuthTabs";
-import { CarFront } from "lucide-react";
+import { CarFront, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Auth: React.FC = () => {
   const { isLoading } = useAuth();
@@ -26,7 +28,26 @@ const Auth: React.FC = () => {
           </div>
         </Card>
       ) : (
-        <AuthTabs />
+        <>
+          <AuthTabs />
+          
+          <div className="w-full max-w-md mt-6">
+            <Link to="/wheelationship">
+              <Card className="p-4 hover:bg-gray-50 transition-colors border-dashed border-2 flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-pink-100 text-pink-500 p-2 rounded-full mr-3">
+                    <CarFront className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Find your perfect car match!</h3>
+                    <p className="text-sm text-muted-foreground">Try Wheelationship car matching quiz</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 text-gray-400" />
+              </Card>
+            </Link>
+          </div>
+        </>
       )}
       
       <footer className="mt-8 text-center text-xs text-muted-foreground">

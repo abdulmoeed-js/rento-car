@@ -1,63 +1,109 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { ChatProvider } from "./context/ChatContext";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
 import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
-import AdminKyc from "./pages/AdminKyc";
-import CreateAdmin from "./pages/CreateAdmin";
-import AdminDashboard from "./pages/AdminDashboard";
+import UploadLicense from "./pages/UploadLicense";
 import OwnerPortal from "./pages/OwnerPortal";
-import MyTrips from "./pages/MyTrips";
-import ChatPage from "./pages/ChatPage";
-import AddEditCar from "./pages/owner/AddEditCar";
-import BookingRequests from "./pages/owner/BookingRequests";
-import OwnerBookings from "./pages/owner/OwnerBookings";
-import OwnerEarnings from "./pages/owner/OwnerEarnings";
-import SeedCars from "./pages/SeedCars";
+import Admin from "./pages/Admin";
+import { hasRole } from "@/utils/supabaseHelpers";
+import { useEffect, useState } from "react";
+import { Layout } from "@/components/Layout";
+import Chat from "./pages/Chat";
 
-const queryClient = new QueryClient();
+// Add this import for the Wheelationship page
+import Wheelationship from "./pages/Wheelationship";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ChatProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/cars" element={<CarListing />} />
-              <Route path="/cars/:id" element={<CarDetail />} />
-              <Route path="/owner-portal" element={<OwnerPortal />} />
-              <Route path="/owner-portal/cars/new" element={<AddEditCar />} />
-              <Route path="/owner-portal/cars/edit/:id" element={<AddEditCar />} />
-              <Route path="/owner-portal/bookings/requests" element={<BookingRequests />} />
-              <Route path="/owner-portal/bookings" element={<OwnerBookings />} />
-              <Route path="/owner-portal/earnings" element={<OwnerEarnings />} />
-              <Route path="/trips" element={<MyTrips />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/admin/kyc" element={<AdminKyc />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/create-admin" element={<CreateAdmin />} />
-              <Route path="/seed-cars" element={<SeedCars />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ChatProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const ProtectedRoute = ({
+  children,
+  requiredRole,
+}: {
+  children: React.ReactNode;
+  requiredRole?: string;
+}) => {
+  const { user, loading } = useAuth();
+  const [hasRequiredRole, setHasRequiredRole] = useState(false);
+  const [roleCheckComplete, setRoleCheckComplete] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      if (user && requiredRole) {
+        const hasCorrectRole = await hasRole(user.id, requiredRole);
+        setHasRequiredRole(hasCorrectRole);
+      }
+      setRoleCheckComplete(true);
+    };
+
+    if (user) {
+      checkRole();
+    }
+  }, [user, requiredRole]);
+
+  if (loading || !roleCheckComplete) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+
+  if (requiredRole && !hasRequiredRole) {
+    return <div>Unauthorized</div>;
+  }
+
+  return children;
+};
+
+const App = () => {
+  const { authInitialized } = useAuth();
+  
+  if (!authInitialized) {
+    return <div>Loading...</div>;
+  }
+  
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/cars" element={<CarListing />} />
+            <Route path="/cars/:carId" element={<CarDetail />} />
+            <Route path="/upload-license" element={<UploadLicense />} />
+            <Route path="/wheelationship" element={<Wheelationship />} />
+
+            <Route
+              path="/owner-portal"
+              element={
+                <ProtectedRoute requiredRole="host">
+                  <OwnerPortal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+             <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Layout>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
 
 export default App;

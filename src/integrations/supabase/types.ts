@@ -82,6 +82,78 @@ export type Database = {
           },
         ]
       }
+      car_match_sessions: {
+        Row: {
+          answers: Json | null
+          created_at: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      car_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          tag: string
+          tag_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          tag: string
+          tag_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          tag?: string
+          tag_type?: string
+        }
+        Relationships: []
+      }
+      car_tags_join: {
+        Row: {
+          car_id: string
+          tag_id: string
+        }
+        Insert: {
+          car_id: string
+          tag_id: string
+        }
+        Update: {
+          car_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_tags_join_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "car_tags_join_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "car_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars: {
         Row: {
           available_days: string[] | null
