@@ -1,5 +1,43 @@
 
-# This file sets up functions to deploy to your Supabase project
+project_id = "tzawsihjrndgmaartefg"
+
+[api]
+enabled = true
+port = 54321
+swagger = true
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[realtime]
+enabled = true
+
+[functions.create-payment-intent]
+verify_jwt = true
 
 [functions.has-role]
-verify_jwt = false
+verify_jwt = true
+
+[functions.log-user-activity]
+verify_jwt = true
+
+[functions.send-booking-notification]
+verify_jwt = true
+
+[functions.set-user-role]
+verify_jwt = true
+
+[functions.get-user-by-email]
+verify_jwt = true

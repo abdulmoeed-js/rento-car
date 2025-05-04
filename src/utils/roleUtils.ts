@@ -10,20 +10,14 @@ import { toast } from 'sonner';
  */
 export async function updateUserRole(email: string, role: 'host' | 'renter'): Promise<boolean> {
   try {
-    // First, find the user ID from their email
-    const { data: userData, error: userError } = await supabase
-      .from('auth.users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    // First, find the user by email through the admin API
+    // We need to use the edge function since we can't directly query auth.users from the client
+    const { data: userData, error: userError } = await supabase.functions.invoke('get-user-by-email', {
+      body: { email }
+    });
     
-    if (userError) {
-      console.error('Error finding user by email:', userError);
-      return false;
-    }
-    
-    if (!userData) {
-      console.error('User not found with email:', email);
+    if (userError || !userData) {
+      console.error('Error finding user by email:', userError || 'No user data returned');
       return false;
     }
     
@@ -53,7 +47,7 @@ export async function updateUserRole(email: string, role: 'host' | 'renter'): Pr
  */
 export async function makeUserHost(email: string): Promise<string> {
   try {
-    // Use the has-role edge function to set the user's role to host
+    // Use the set-user-role edge function to set the user's role to host
     const { data, error } = await supabase.functions.invoke('set-user-role', {
       body: { email, role: 'host' }
     });
