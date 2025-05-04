@@ -29,6 +29,7 @@ export interface ChatContextType {
   sendMessage: (content: string, receiverId: string, attachmentUrl?: string) => Promise<void>;
   isSending: boolean;
   unreadCount: number;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   markAsRead: (messageIds: string[]) => Promise<void>;
   currentChatRoom: string | null;
   setChatRoom: (roomId: string | null) => void;
