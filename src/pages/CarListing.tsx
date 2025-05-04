@@ -1,15 +1,15 @@
 
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCars } from "@/lib/carApi";
 import { CarFilters } from "@/types/car";
 import CarFiltersComponent from "@/components/CarFilters";
 import CarCard from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
-import { CarFront, User } from "lucide-react";
-import RentoHeader from "@/components/layout/RentoHeader";
+import { CarFront, Plus, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const defaultFilters: CarFilters = {
   priceRange: [0, 200],
@@ -23,6 +23,7 @@ const defaultFilters: CarFilters = {
 const CarListing = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [filters, setFilters] = useState<CarFilters>(defaultFilters);
+  const navigate = useNavigate();
 
   const { data: cars = [], isLoading: carsLoading, refetch } = useQuery({
     queryKey: ['cars', filters],
@@ -35,15 +36,16 @@ const CarListing = () => {
     setFilters(newFilters);
   };
 
+  const handleSeedData = () => {
+    navigate('/seed-cars');
+  };
+
   useEffect(() => {
     refetch();
   }, [filters, refetch]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <RentoHeader />
-
       {/* Main Content */}
       <main className="container mx-auto p-4 py-6">
         <div className="mb-6 flex justify-between items-center">
@@ -78,8 +80,26 @@ const CarListing = () => {
               <div className="bg-white rounded-lg p-8 text-center shadow-sm border">
                 <CarFront className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No cars found</h3>
-                <p className="text-muted-foreground mb-4">Try adjusting your filters to find available cars.</p>
-                <Button onClick={() => setFilters(defaultFilters)}>Reset Filters</Button>
+                <p className="text-muted-foreground mb-4">
+                  {user ? "No cars are available. Try seeding the database with demo cars." : "Try adjusting your filters to find available cars."}
+                </p>
+                
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                  <Button onClick={() => setFilters(defaultFilters)}>
+                    Reset Filters
+                  </Button>
+                  
+                  {user && (
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-1" 
+                      onClick={handleSeedData}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Seed Demo Cars
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

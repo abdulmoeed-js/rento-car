@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -169,12 +170,19 @@ const Index = () => {
           </Card>
         </div>
         
-        {/* Testing Tools */}
+        {/* Testing Tools with more prominent Seed Demo Cars button */}
         <div className="mt-8">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/seed-cars")}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button 
+            variant="default" 
+            className="flex items-center gap-2"
+            onClick={() => navigate("/seed-cars")}
+          >
+            <Plus className="h-4 w-4" />
             Seed Demo Cars
           </Button>
+          <p className="text-sm text-muted-foreground mt-2 text-center max-w-sm">
+            Add sample cars to browse and test the app's features
+          </p>
         </div>
       </div>
     </div>
