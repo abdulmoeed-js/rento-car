@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -157,9 +156,9 @@ const Index = () => {
                 </Button>
               )}
               
-              <Button variant="outline" className="w-full gap-2 relative" onClick={() => navigate("/cars")}>
+              <Button variant="outline" className="w-full gap-2 relative" onClick={() => navigate("/chat")}>
                 <MessageSquare className="h-4 w-4" />
-                Browse Cars
+                Chat Support
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
                     {unreadCount}

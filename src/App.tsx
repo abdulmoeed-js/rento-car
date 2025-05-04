@@ -12,6 +12,8 @@ import OwnerPortal from "./pages/OwnerPortal";
 import { hasRole } from "@/utils/supabaseHelpers";
 import { useEffect, useState } from "react";
 import Wheelationship from "./pages/Wheelationship";
+import SeedCars from "./pages/SeedCars";
+import ChatPage from "./pages/ChatPage";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -91,6 +93,7 @@ const AppContent = () => {
       <Route path="/upload-license" element={<UploadLicense />} />
       <Route path="/wheelationship" element={<Wheelationship />} />
       <Route path="/seed-cars" element={<SeedCars />} />
+      <Route path="/chat" element={<ChatPage />} />
 
       <Route
         path="/owner-portal"
