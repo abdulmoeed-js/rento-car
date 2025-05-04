@@ -17,6 +17,7 @@ import ChatPage from "./pages/ChatPage";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AdminTools from "./pages/AdminTools";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -94,6 +95,7 @@ const AppContent = () => {
       <Route path="/wheelationship" element={<Wheelationship />} />
       <Route path="/seed-cars" element={<SeedCars />} />
       <Route path="/chat" element={<ChatPage />} />
+      <Route path="/admin-tools" element={<AdminTools />} />
 
       <Route
         path="/owner-portal"
