@@ -1,10 +1,18 @@
 
 import React from 'react';
+import RentoHeader from './layout/RentoHeader';
+import { useLocation } from 'react-router-dom';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const showHeader = location.pathname !== '/auth';
+  
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {children}
+      {showHeader && <RentoHeader />}
+      <main className="flex-grow">
+        {children}
+      </main>
     </div>
   );
 };

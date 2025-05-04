@@ -1,28 +1,49 @@
 
+import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CarFront, LogOut, User, Search, Plus, Calendar, MessageSquare, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useChat } from "@/context/ChatContext";
-import RentoHeader from "@/components/layout/RentoHeader";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const Index = () => {
   const { user, signOut, isLoading } = useAuth();
   const { unreadCount } = useChat();
   const navigate = useNavigate();
-  const [redirectTimerId, setRedirectTimerId] = useState<number | null>(null);
+  const [isCheckingCars, setIsCheckingCars] = useState(false);
 
-  // Clear any redirect timers when component unmounts
   useEffect(() => {
-    return () => {
-      if (redirectTimerId) {
-        clearTimeout(redirectTimerId);
+    // Check if we have cars in the database
+    const checkCars = async () => {
+      try {
+        setIsCheckingCars(true);
+        const { data: cars, error } = await fetch('https://tzawsihjrndgmaartefg.supabase.co/rest/v1/cars?select=id&limit=1', {
+          method: 'GET',
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6YXdzaWhqcm5kZ21hYXJ0ZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM4Njc2NDYsImV4cCI6MjA1OTQ0MzY0Nn0.zLo_YNOQka-PB-ndxi0Nvv960Z4j7mtp9qMdpgKJ_fE',
+          }
+        }).then(res => res.json());
+        
+        if (!cars || cars.length === 0) {
+          toast.info("Please seed the database with demo cars to fully experience the app", {
+            duration: 5000,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking cars:", error);
+      } finally {
+        setIsCheckingCars(false);
       }
     };
-  }, [redirectTimerId]);
+
+    if (user) {
+      checkCars();
+    }
+  }, [user]);
 
   // Loading state
   if (isLoading) {
@@ -98,7 +119,6 @@ const Index = () => {
   // User is authenticated - show dashboard
   return (
     <div className="min-h-screen bg-white">
-      <RentoHeader />
       <div className="container mx-auto p-8 flex flex-col items-center">
         <h1 className="text-2xl font-bold mb-8">Welcome, {user.full_name || 'User'}</h1>
         
@@ -131,15 +151,15 @@ const Index = () => {
                   Manage My Cars
                 </Button>
               ) : (
-                <Button className="w-full gap-2" onClick={() => navigate("/trips")}>
+                <Button className="w-full gap-2" onClick={() => navigate("/cars")}>
                   <Calendar className="h-4 w-4" />
-                  View My Trips
+                  Find Cars
                 </Button>
               )}
               
-              <Button variant="outline" className="w-full gap-2 relative" onClick={() => navigate("/chat")}>
+              <Button variant="outline" className="w-full gap-2 relative" onClick={() => navigate("/cars")}>
                 <MessageSquare className="h-4 w-4" />
-                Messages
+                Browse Cars
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
                     {unreadCount}

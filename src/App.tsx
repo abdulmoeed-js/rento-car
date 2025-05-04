@@ -2,6 +2,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ChatProvider } from "./context/ChatContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CarListing from "./pages/CarListing";
@@ -14,7 +15,6 @@ import Wheelationship from "./pages/Wheelationship";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import SeedCars from "./pages/SeedCars";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -100,26 +100,6 @@ const AppContent = () => {
           </ProtectedRoute>
         }
       />
-      {/* Temporarily commented out Admin route until we create the component
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute requiredRole="admin">
-            <Admin />
-          </ProtectedRoute>
-        }
-      />
-      */}
-      {/* Temporarily commented out Chat route until we create the component
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <Chat />
-          </ProtectedRoute>
-        }
-      />
-      */}
     </Routes>
   );
 };
@@ -129,10 +109,12 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <Layout>
-            <AppContent />
-            <Toaster position="top-center" />
-          </Layout>
+          <ChatProvider>
+            <Layout>
+              <AppContent />
+              <Toaster position="top-center" />
+            </Layout>
+          </ChatProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

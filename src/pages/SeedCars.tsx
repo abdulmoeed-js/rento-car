@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +103,19 @@ const SeedCars = () => {
   const [log, setLog] = useState<string[]>([]);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Check if seeding was done before
+    const checkSeed = async () => {
+      const { data } = await supabase.from('cars').select('id').limit(1);
+      if (data && data.length > 0) {
+        setLog(prev => [...prev, "Cars already exist in the database."]);
+        setIsComplete(true);
+      }
+    };
+    
+    checkSeed();
+  }, []);
+
   const addLog = (message: string) => {
     setLog(prev => [...prev, message]);
   };
@@ -145,8 +158,7 @@ const SeedCars = () => {
       } else {
         // If no host found, create a new host user...
         addLog("No host found. Creating a new host user...");
-        // Note: We need to set profile with user_role = host after signup
-
+        
         const { data: newUser, error: createUserError } = await supabase.auth.signUp({
           email: `host-${Date.now()}@example.com`,
           password: 'password123',
@@ -188,6 +200,17 @@ const SeedCars = () => {
       addLog("Adding cars to the database...");
 
       for (const car of seedCars) {
+        const { data: existingCar } = await supabase
+          .from('cars')
+          .select('id')
+          .eq('license_plate', car.license_plate)
+          .single();
+          
+        if (existingCar) {
+          addLog(`Car with license plate ${car.license_plate} already exists, skipping...`);
+          continue;
+        }
+
         const { data: carData, error: carError } = await supabase
           .from('cars')
           .insert({
