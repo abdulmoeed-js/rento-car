@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { CarFront, CheckCircle2 } from "lucide-react";
+import { seedCarTags, applyTagsToCar } from "@/utils/carTagsSeeder";
 
 // Updated seed car data with provided images
 const seedCars = [
@@ -59,6 +60,40 @@ const seedCars = [
     location: "Bangalore, India",
     description: "Blue Honda City with premium features and sporty look.",
     image_url: "/lovable-uploads/87228688-d8c5-4b5e-a804-c3ed3c810a88.png"
+  },
+  {
+    brand: "Toyota",
+    model: "Fortuner",
+    year: 2022,
+    transmission: "automatic",
+    fuel_type: "diesel",
+    car_type: "suv",
+    doors: 5,
+    has_ac: true,
+    license_plate: "TOYSUV1",
+    price_per_day: 120,
+    multi_day_discount: 15,
+    cancellation_policy: "strict",
+    location: "Delhi, India",
+    description: "Spacious and powerful SUV perfect for family road trips.",
+    image_url: "/lovable-uploads/8ad6646a-ed6c-403f-8418-7147ed499ca7.png"
+  },
+  {
+    brand: "Maruti Suzuki",
+    model: "Swift",
+    year: 2023,
+    transmission: "manual",
+    fuel_type: "petrol",
+    car_type: "hatchback",
+    doors: 5,
+    has_ac: true,
+    license_plate: "SWIFTX1",
+    price_per_day: 45,
+    multi_day_discount: 10,
+    cancellation_policy: "flexible",
+    location: "Mumbai, India",
+    description: "Compact and fuel efficient, great for city driving.",
+    image_url: "/lovable-uploads/c5b96ea5-bb51-49f4-a371-d60c2e57c514.png"
   }
 ];
 
@@ -77,6 +112,17 @@ const SeedCars = () => {
     addLog("Starting database seeding process...");
 
     try {
+      // First, seed the car tags table
+      addLog("Setting up car tags for matching...");
+      const tagsResult = await seedCarTags();
+      
+      if (!tagsResult.success) {
+        addLog(`Warning: Issue with car tags: ${tagsResult.error?.message || 'Unknown error'}`);
+        // Continue anyway since this is not critical
+      } else {
+        addLog("Car tags setup successful");
+      }
+
       // Find a host user to associate the cars with
       addLog("Looking for a host user...");
 
@@ -185,7 +231,13 @@ const SeedCars = () => {
           throw new Error(`Error inserting car image for ${car.brand} ${car.model}: ${imageError.message}`);
         }
 
-        addLog(`Added ${car.brand} ${car.model} with image`);
+        // Apply tags to the car
+        const tagResult = await applyTagsToCar(carData.id, car);
+        if (!tagResult.success) {
+          addLog(`Warning: Failed to apply tags to ${car.brand} ${car.model}`);
+        }
+
+        addLog(`Added ${car.brand} ${car.model} with image and tags`);
       }
 
       addLog("Seeding completed successfully!");
@@ -217,9 +269,10 @@ const SeedCars = () => {
               <p className="font-medium mb-2">This tool will:</p>
               <ul className="list-disc pl-5 space-y-1 text-sm">
                 <li>Find or create a host user</li>
-                <li>Add 3 sample cars with different characteristics</li>
+                <li>Add 5 sample cars with different characteristics</li>
                 <li>Link the cars to the host user</li>
                 <li>Add sample images to each car</li>
+                <li>Set up car tags for the Wheelationship feature</li>
               </ul>
             </div>
 
@@ -238,23 +291,35 @@ const SeedCars = () => {
                 <CheckCircle2 className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                 <div>
                   <p className="font-medium">Database seeded successfully!</p>
-                  <p className="text-sm mt-1">You can now browse the cars in the car listing page.</p>
+                  <p className="text-sm mt-1">You can now browse the cars in the car listing page or try the Wheelationship feature.</p>
                 </div>
               </div>
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate("/cars")}
-          >
-            Go to Car Listing
-          </Button>
+        <CardFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between">
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/cars")}
+              className="flex-1 sm:flex-none"
+            >
+              Browse Cars
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => navigate("/wheelationship")}
+              className="flex-1 sm:flex-none"
+            >
+              Try Wheelationship
+            </Button>
+          </div>
           
           <Button 
             disabled={isLoading || isComplete} 
             onClick={seedDatabase}
+            className="w-full sm:w-auto"
           >
             {isLoading ? "Seeding Database..." : isComplete ? "Completed" : "Seed Database"}
           </Button>

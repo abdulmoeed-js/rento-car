@@ -14,6 +14,7 @@ import Wheelationship from "./pages/Wheelationship";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import SeedCars from "./pages/SeedCars";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -89,6 +90,7 @@ const AppContent = () => {
       <Route path="/cars/:carId" element={<CarDetail />} />
       <Route path="/upload-license" element={<UploadLicense />} />
       <Route path="/wheelationship" element={<Wheelationship />} />
+      <Route path="/seed-cars" element={<SeedCars />} />
 
       <Route
         path="/owner-portal"
