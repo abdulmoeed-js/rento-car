@@ -10,7 +10,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {showHeader && <RentoHeader />}
-      <main className="flex-grow">
+      <main className="flex-grow pt-4">
         {children}
       </main>
     </div>

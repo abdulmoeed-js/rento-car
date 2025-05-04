@@ -49,7 +49,7 @@ const SeedCars = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="container mx-auto p-6">
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

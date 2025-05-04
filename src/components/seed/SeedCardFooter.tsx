@@ -37,9 +37,9 @@ export const SeedCardFooter: React.FC<SeedCardFooterProps> = ({
       </div>
       
       <Button 
-        disabled={isLoading || isComplete} 
+        disabled={isLoading || isComplete}
         onClick={onSeed}
-        className="w-full sm:w-auto"
+        className="w-full sm:w-auto bg-rento-blue hover:bg-rento-darkblue"
       >
         {isLoading ? "Seeding Database..." : isComplete ? "Completed" : "Seed Database"}
       </Button>
