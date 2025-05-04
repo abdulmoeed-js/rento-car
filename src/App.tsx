@@ -13,6 +13,17 @@ import { useEffect, useState } from "react";
 import Wheelationship from "./pages/Wheelationship";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const ProtectedRoute = ({
   children,
@@ -113,14 +124,16 @@ const AppContent = () => {
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Layout>
-          <AppContent />
-          <Toaster position="top-center" />
-        </Layout>
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Layout>
+            <AppContent />
+            <Toaster position="top-center" />
+          </Layout>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 
